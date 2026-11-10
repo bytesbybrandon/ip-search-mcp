@@ -1,0 +1,37 @@
+{
+  "name": "ip-axi",
+  "version": "0.1.1",
+  "description": "AXI CLI for patent and trademark research, drawing validation, and a local bulk index.",
+  "license": "MIT",
+  "author": "Brandon D. Phillips (https://www.bytesbybrandon.com)",
+  "homepage": "https://bytesbybrandon.github.io/ip-search-mcp/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bytesbybrandon/ip-search-mcp.git",
+    "directory": "packages/ip-axi"
+  },
+  "bugs": {
+    "url": "https://github.com/bytesbybrandon/ip-search-mcp/issues"
+  },
+  "type": "module",
+  "bin": {
+    "ip-axi": "bin/ip-axi.js"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "keywords": [
+    "axi",
+    "patents",
+    "trademarks",
+    "uspto",
+    "intellectual-property"
+  ],
+  "dependencies": {
+    "ip-search-mcp": "0.1.1"
+  }
+}
