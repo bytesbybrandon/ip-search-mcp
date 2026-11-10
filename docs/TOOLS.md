@@ -26,4 +26,6 @@ Every tool is registered by `src/server.ts`. Keyed tools return `CREDENTIAL_MISS
 
 Search results carry `Provenance` with provider, route, retrieval time, source id, and an `undocumented` flag for the opt-in surfaces. A zero-result search is recorded as a zero-result search, never as evidence of novelty.
 
+The same tools are available from the shell through `ip-axi`; see [../skills/ip-axi/SKILL.md](../skills/ip-axi/SKILL.md) for commands and flags.
+
 See [LIMITS.md](LIMITS.md) for what these tools cannot decide.
