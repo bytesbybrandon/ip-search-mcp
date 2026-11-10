@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<us-patent-grant>
+  <us-bibliographic-data-grant>
+    <publication-reference>
+      <document-id>
+        <country>US</country>
+        <doc-number>9765584</doc-number>
+        <kind>B2</kind>
+        <date>20171024</date>
+      </document-id>
+    </publication-reference>
+    <invention-title>Self-calibrating optical sensor housing</invention-title>
+    <parties>
+      <inventors>
+        <inventor>
+          <addressbook>
+            <first-name>Ada</first-name>
+            <last-name>Lovelace</last-name>
+          </addressbook>
+        </inventor>
+      </inventors>
+      <applicants>
+        <applicant>
+          <addressbook>
+            <orgname>Gizmo Works LLC</orgname>
+          </addressbook>
+        </applicant>
+      </applicants>
+    </parties>
+  </us-bibliographic-data-grant>
+  <abstract>
+    <p>A gizmo housing holds an optical sensor and calibrates the sensor against a reference surface.</p>
+  </abstract>
+  <description>
+    <p>The gizmo includes a housing 10 and an optical sensor 12 mounted inside the housing.</p>
+  </description>
+  <claims>
+    <claim><claim-text>1. A gizmo comprising a housing and an optical sensor disposed in the housing.</claim-text></claim>
+    <claim><claim-text>2. The gizmo of claim 1, wherein the optical sensor is calibrated against a reference surface.</claim-text></claim>
+  </claims>
+</us-patent-grant>

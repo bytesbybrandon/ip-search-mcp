@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<trademark-applications>
+  <case-file>
+    <serial-number>87454105</serial-number>
+    <registration-number>6096739</registration-number>
+    <filing-date>20170517</filing-date>
+    <registration-date>20200707</registration-date>
+    <mark>
+      <mark-text>
+        <mark-text-text>ACME GIZMO</mark-text-text>
+      </mark-text>
+    </mark>
+    <classifications>
+      <classification>
+        <international-class-number>009</international-class-number>
+      </classification>
+    </classifications>
+    <goods-services>
+      <goods-services-description-text>Downloadable software for calibrating optical sensors</goods-services-description-text>
+    </goods-services>
+    <case-file-owners>
+      <case-file-owner>
+        <owner-name>Gizmo Works LLC</owner-name>
+      </case-file-owner>
+    </case-file-owners>
+    <case-file-header>
+      <mark-current-status-external-description-text>REGISTERED</mark-current-status-external-description-text>
+    </case-file-header>
+  </case-file>
+</trademark-applications>
