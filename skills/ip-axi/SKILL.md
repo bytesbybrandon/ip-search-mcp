@@ -15,7 +15,7 @@ Run with no arguments for live provider and index status. No side effects.
 node <repo>/dist/src/axi/index.js
 ```
 
-`npx -y ip-axi` works only after the package is published; until then use the node command or `pnpm exec ip-axi`.
+`npx -y ip-axi` runs the published package; `pnpm exec ip-axi` runs the local build.
 
 ## Commands
 
