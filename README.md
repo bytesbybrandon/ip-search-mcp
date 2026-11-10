@@ -5,6 +5,8 @@
 
 MCP server for patent and trademark research plus review-only drafting of patent application artifacts. It searches official and bulk-derived sources, keeps provenance on every hit, screens concepts for patentability and registrability signals, and produces drawings, claims, specifications, and an attorney packet. It never files, signs, or submits anything.
 
+The deployed project page is at https://bytesbybrandon.github.io/ip-search-mcp/.
+
 ---
 
 ### Key Features
@@ -24,6 +26,7 @@ The full tool list is in [docs/TOOLS.md](docs/TOOLS.md).
 * **MCP:** `@modelcontextprotocol/sdk` over stdio, with `zod` input schemas.
 * **Storage:** `node:sqlite` FTS5 database plus a file cache.
 * **Tools:** pnpm, `tsc`, `node --test`, and GitHub Actions.
+* **Site:** static HTML in `site/`, deployed by GitHub Pages.
 
 ### Table of Contents
 
@@ -139,7 +142,7 @@ node dist/src/axi/index.js drawings validate ip/drawings/fig-1.svg --description
 node dist/src/axi/index.js index build --from <dir-of-bulk-xml>
 ```
 
-Run `npm link` once in the repo to put `ip-axi` on PATH; afterwards the bare command works from any directory. `pnpm exec ip-axi` also works inside the repo. `npx -y ip-axi` works only after the package is published.
+Run `npm link` once in the repo to put `ip-axi` on PATH; afterwards the bare command works from any directory. `pnpm exec ip-axi` also works inside the repo. `npx -y ip-axi` runs the published package.
 
 Output is TOON, every list prints totals, `--fields` adds columns, `--full` stops truncation, exit codes are 0 success / 1 error / 2 usage, errors carry a fixing command, and every result ends with a `next[]` block. Full command reference: [skills/ip-axi/SKILL.md](skills/ip-axi/SKILL.md).
 
@@ -184,7 +187,8 @@ src/
 test/             node --test suites and XML fixtures
 docs/             architecture, credentials, limits, tools, local index
 skills/ip-axi/    AXI command reference
-.github/          community files and CI
+site/             static project page for GitHub Pages
+.github/          community files, CI, and Pages
 ```
 
 Component boundaries and data flow are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). What no tool can do, and which surfaces carry terms-of-use risk, is in [docs/LIMITS.md](docs/LIMITS.md).

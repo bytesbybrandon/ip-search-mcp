@@ -1,7 +1,6 @@
 {
   "name": "ip-search-mcp",
   "version": "0.1.0",
-  "private": true,
   "description": "MCP server for patent and trademark research and review-only drafting.",
   "license": "MIT",
   "author": "Brandon D. Phillips (https://www.bytesbybrandon.com)",
@@ -25,7 +24,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "node --test dist/test/*.test.js",
     "check": "tsc -p tsconfig.json --noEmit",
-    "skill:check": "node scripts/skill-check.mjs"
+    "skill:check": "node scripts/skill-check.mjs",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
@@ -35,5 +35,12 @@
   "devDependencies": {
     "@types/node": "^26.6.6",
     "typescript": "^7.0.2"
-  }
+  },
+  "files": [
+    "dist",
+    "skills",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ]
 }

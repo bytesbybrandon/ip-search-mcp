@@ -85,6 +85,10 @@ There is no submission code path anywhere in the server: no EFS-Web, Patent Cent
 
 One file can hold thousands of records: `<case-file>` blocks are split and parsed individually so a daily TDXF file indexes every application and memory stays bounded. Patent grant and application XML files are parsed whole. Limits: ingest is not incremental across releases beyond `INSERT OR REPLACE`; field mapping follows the documented TDXF and ICE names and must be checked against the data dictionary for a given snapshot. Measured: 7,330 trademark records from a 143 MB file in 60 seconds.
 
+## Project site
+
+`site/` holds a static project page with no build step: tokens, base rules, one stylesheet, and one HTML file. `.github/workflows/pages.yml` deploys that directory to GitHub Pages on every push to main that touches it. The page is presentation only; it is not an input to the server or the package.
+
 ## Failure behavior
 
 Errors are typed (`CREDENTIAL_MISSING`, `PROVIDER_DISABLED`, `RATE_LIMITED`, `UPSTREAM`, `NOT_FOUND`, `INVALID_INPUT`, `UNSUPPORTED_FORMAT`). Tools return them as `isError` results with an actionable hint. Nothing crashes the process, and no error is converted into an empty success.
