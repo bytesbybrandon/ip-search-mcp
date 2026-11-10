@@ -16,6 +16,7 @@ Observed with real USPTO keys, then encoded in the tests and provider code.
 - **ODP date-range filtering is not verified.** Four documented shapes (`rangeFilters` with ISO dates, compact dates, and both `filingDate` and `applicationFilingDate`; `filters` with range strings) all returned 404 or 400. `patents_search` therefore rejects `from`/`to` for the ODP provider and routes date-bounded queries to EPO OPS or the local index. ODP sort and filter field names are likewise unverified.
 - **ODP documents live under `documentBag[].downloadOptionBag[]`.** The provider flattens them to code, description, official date, page count, and PDF URL. A 2026 application returned 53 documents.
 - **TSDR returns namespaced ST.96 XML.** With namespace prefixes removed, `ApplicationNumberText`, `RegistrationNumber`, `MarkVerbalElementText`, `NationalStatusExternalDescriptionText`, `ApplicationDate`, `RegistrationDate`, `ClassNumber`, and `EntityName` map correctly. Serial 87454105 returned DOCKER, ACTIVE, registration 6096739, Docker, Inc., class 9, and 57 documents.
+- **Bulk ingest works at record scale.** A real trademark daily file (7.7 MB compressed, 143 MB XML, 7,330 case-file records) indexed in 60 seconds with zero skips and searchable rows. Each case-file is parsed separately, so daily files no longer collapse to one record.
 - **Not yet exercised live:** EPO OPS (no credentials), Patent Public Search, and the Trademark Search backend (both opt-in).
 
 ## Search quality
