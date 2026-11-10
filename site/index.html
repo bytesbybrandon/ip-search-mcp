@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ip-search-mcp: patent and trademark research for agents</title>
+<meta name="description" content="An MCP server and CLI for patent and trademark research, 37 CFR 1.84 drawing validation, and review-only drafting. Provenance on every hit. Nothing is filed.">
+<meta property="og:title" content="ip-search-mcp">
+<meta property="og:description" content="Patent and trademark research your agent can cite. Nothing is filed.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="container nav__inner">
+    <a class="wordmark" href="./">ip-search-mcp</a>
+    <nav aria-label="Primary">
+      <a href="#install">Install</a>
+      <a href="https://github.com/bytesbybrandon/ip-search-mcp">Source</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="container hero__grid">
+      <div class="hero__text">
+        <h1 id="hero-title">Patent research your agent can cite.</h1>
+        <p class="lead">Nineteen tools over the open registers, with provenance on every hit.</p>
+        <div class="actions">
+          <button class="btn btn--primary" type="button" data-copy="#mcp-config">Copy the MCP config</button>
+          <a class="btn" href="#install">Install notes</a>
+        </div>
+        <p class="note">No filing, signing, or submission path exists.</p>
+      </div>
+
+      <figure class="hero__visual">
+        <figcaption class="label">MCP client configuration</figcaption>
+        <div class="panel-code">
+          <p class="panel-code__bar"><span class="label">First command</span><code>npx -y ip-axi</code></p>
+          <pre class="code" id="mcp-config"><code>{
+  "mcpServers": {
+    "ip-search-mcp": {
+      "command": "npx",
+      "args": ["-y", "ip-search-mcp"],
+      "env": {
+        "USPTO_ODP_API_KEY": "...",
+        "USPTO_TSDR_API_KEY": "..."
+      }
+    }
+  }
+}</code></pre>
+        </div>
+        <p class="note">Keys are optional. Missing keys narrow the run.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="what">
+    <div class="container">
+      <div class="section__head">
+        <h2 id="what">One server, one command, one record.</h2>
+        <p class="lead">One contract, two surfaces.</p>
+      </div>
+      <div class="panels">
+        <article class="panel">
+          <h3>Server</h3>
+          <p>USPTO ODP, TSDR, and EPO OPS, with provenance.</p>
+        </article>
+        <article class="panel">
+          <h3>CLI</h3>
+          <p><code>ip-axi</code> returns TOON, totals, next command.</p>
+        </article>
+        <article class="panel">
+          <h3>Index</h3>
+          <p>SQLite FTS5 over USPTO bulk XML.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section readings" aria-labelledby="numbers">
+    <div class="container">
+      <h2 id="numbers" class="visually-hidden">Measured surface</h2>
+      <div class="readings__grid">
+        <div class="reading">
+          <p class="reading__value">19</p>
+          <p class="label">MCP tools</p>
+        </div>
+        <div class="reading">
+          <p class="reading__value">17</p>
+          <p class="label">drawing rules from 37 CFR 1.84</p>
+        </div>
+        <div class="reading">
+          <p class="reading__value">37</p>
+          <p class="label">tests in the suite</p>
+        </div>
+        <div class="reading">
+          <p class="reading__value">7,330</p>
+          <p class="label">trademark records from one daily file</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="drafting">
+    <div class="container trail">
+      <div class="section__head">
+        <h2 id="drafting">Drafting that states its own gaps.</h2>
+      </div>
+      <div class="trail__rows">
+        <div class="trail__row">
+          <p class="trail__name">Claims</p>
+          <p class="trail__what">Numbering, dependencies, antecedent basis, 112(f) triggers.</p>
+          <p class="measured trail__cite">35 U.S.C. 112</p>
+        </div>
+        <div class="trail__row">
+          <p class="trail__name">Drawings</p>
+          <p class="trail__what">Margins, ink, line weight, text height, reference characters.</p>
+          <p class="measured trail__cite">37 CFR 1.84</p>
+        </div>
+        <div class="trail__row">
+          <p class="trail__name">Disclosure clock</p>
+          <p class="trail__what">US grace deadline and absolute-novelty jurisdictions.</p>
+          <p class="measured trail__cite">35 U.S.C. 102(b)(1)</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section limits" aria-labelledby="limits">
+    <div class="container">
+      <h2 id="limits" class="visually-hidden">Limits</h2>
+      <p class="limits__statement">Nothing here can be filed, signed, or submitted.</p>
+      <div class="limits__rows">
+        <p>Missing facts become gaps.</p>
+        <p>Skipped providers stay in the artifact.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section install" id="install" aria-labelledby="install-title">
+    <div class="container install__grid">
+      <div>
+        <h2 id="install-title">Run it.</h2>
+        <p class="lead">Node 24 or newer.</p>
+        <div class="actions">
+          <a class="btn btn--primary" href="https://www.npmjs.com/package/ip-axi">ip-axi on npm</a>
+        </div>
+      </div>
+      <div class="install__code">
+        <figure>
+          <figcaption class="label">CLI</figcaption>
+          <pre class="code"><code>npx -y ip-axi
+npx -y ip-axi trademarks get 87454105</code></pre>
+        </figure>
+        <figure>
+          <figcaption class="label">MCP server</figcaption>
+          <pre class="code"><code>npx -y ip-search-mcp</code></pre>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="container footer__inner">
+    <p class="wordmark">ip-search-mcp</p>
+    <nav aria-label="Footer">
+      <a href="https://github.com/bytesbybrandon/ip-search-mcp">GitHub</a>
+      <a href="https://www.npmjs.com/package/ip-search-mcp">npm</a>
+      <a href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/TOOLS.md">Tools</a>
+      <a href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/LIMITS.md">Limits</a>
+    </nav>
+    <p class="note">Research and drafts for review by a licensed practitioner. Not legal advice. MIT licensed.</p>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const target = document.querySelector(button.dataset.copy);
+    if (!target) return;
+    try {
+      await navigator.clipboard.writeText(target.innerText);
+      button.textContent = "Copied";
+    } catch {
+      button.textContent = "Select the block to copy";
+    }
+    setTimeout(() => { button.textContent = "Copy the MCP config"; }, 2400);
+  });
+});
+</script>
+</body>
+</html>
