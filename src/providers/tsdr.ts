@@ -11,6 +11,7 @@ const parser = new XMLParser({
   attributeNamePrefix: "@",
   parseTagValue: false,
   trimValues: true,
+  removeNSPrefix: true,
 });
 
 function requireKey(): string {
@@ -127,23 +128,25 @@ export async function caseStatus(identifier: string): Promise<TsdrStatus> {
     .filter((value) => Number.isFinite(value) && value >= 1 && value <= 45);
   const status = first(
     index,
+    "nationalStatusExternalDescriptionText",
     "markCurrentStatusExternalDescriptionText",
     "markCurrentStatusDescriptionText",
     "statusDescriptionText",
   );
   const markText = first(index, "markVerbalElementText", "markLiteralElementText", "wordMark");
-  const serialNumber = first(index, "applicationNumber", "serialNumber");
+  const serialNumber = first(index, "applicationNumberText", "applicationNumber", "serialNumber");
   const registrationNumber = first(index, "registrationNumber");
   const ownerName = first(
     index,
+    "entityName",
+    "organizationStandardName",
     "ownerName",
     "partyName",
     "name",
-    "ownerLegalEntityName",
   );
-  const filingDate = first(index, "applicationFilingDate", "filingDate");
+  const filingDate = first(index, "applicationDate", "applicationFilingDate", "filingDate");
   const registrationDate = first(index, "registrationDate");
-  const statusDate = first(index, "markCurrentStatusDate", "statusDate");
+  const statusDate = first(index, "nationalStatusDate", "markCurrentStatusDate", "statusDate");
   const goods = first(index, "goodsServicesDescriptionText", "goodsAndServicesDescriptionText", "goodsAndServices");
 
   return {
@@ -190,6 +193,7 @@ export interface TsdrDocument {
   description?: string;
   date?: string;
   pages?: number;
+  url?: string;
 }
 
 /**
@@ -218,6 +222,8 @@ export async function caseDocuments(
 
   const parsed = parser.parse(result.text);
   const documents: TsdrDocument[] = [];
+  const str = (value: unknown): string | undefined =>
+    typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
   const walk = (node: unknown): void => {
     if (Array.isArray(node)) {
       for (const item of node) walk(item);
@@ -225,20 +231,22 @@ export async function caseDocuments(
     }
     if (node === null || typeof node !== "object") return;
     const record = node as Record<string, unknown>;
-    const identifierValue = record["DocumentIdentifier"] ?? record["documentIdentifier"];
-    if (typeof identifierValue === "string") {
-      const code = record["DocumentCode"] ?? record["documentCode"];
+    const code = str(record["DocumentTypeCode"]);
+    const urlList = record["UrlPathList"];
+    const url =
+      str(record["UrlPath"]) ??
+      (urlList && typeof urlList === "object"
+        ? str((urlList as Record<string, unknown>)["UrlPath"])
+        : undefined);
+    if (code || url) {
+      const pages = Number(record["TotalPageQuantity"]);
       documents.push({
-        identifier: identifierValue,
-        code: typeof code === "string" ? code : undefined,
-        description:
-          typeof record["DocumentDescription"] === "string"
-            ? record["DocumentDescription"]
-            : undefined,
-        date:
-          typeof record["DocumentDate"] === "string"
-            ? String(record["DocumentDate"]).slice(0, 10)
-            : undefined,
+        identifier: url ?? str(record["OriginalFileName"]),
+        code,
+        description: str(record["DocumentTypeCodeDescriptionText"]),
+        date: str(record["MailRoomDate"])?.slice(0, 10),
+        pages: Number.isFinite(pages) ? pages : undefined,
+        url,
       });
     }
     for (const value of Object.values(record)) walk(value);

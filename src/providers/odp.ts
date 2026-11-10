@@ -82,15 +82,33 @@ export async function searchApplications(
   };
   for (const key of Object.keys(body)) if (body[key] === undefined) delete body[key];
 
-  const result = await requestJson<OdpSearchResponse>({
-    provider: "odp",
-    route: "/api/v1/patent/applications/search",
-    method: "POST",
-    headers: headers(),
-    body,
-    rateLimit: { name: "odp:default", perMinute: 60 },
-    cache: { ttlMs: 5 * 60_000 },
-  });
+  let result;
+  try {
+    result = await requestJson<OdpSearchResponse>({
+      provider: "odp",
+      route: "/api/v1/patent/applications/search",
+      method: "POST",
+      headers: headers(),
+      body,
+      rateLimit: { name: "odp:default", perMinute: 60 },
+      cache: { ttlMs: 5 * 60_000 },
+    });
+  } catch (error) {
+    // ODP answers a zero-hit search with 404 "No matching records found".
+    if (error instanceof IpError && error.code === "NOT_FOUND") {
+      return {
+        count: 0,
+        hits: [],
+        provenance: {
+          provider: "odp",
+          route: "POST /api/v1/patent/applications/search",
+          retrievedAt: new Date().toISOString(),
+          note: "no matching records",
+        },
+      };
+    }
+    throw error;
+  }
 
   const hits = (result.data.patentFileWrapperDataBag ?? []).map((wrapper) =>
     toHit(wrapper, result.provenance),
@@ -188,7 +206,34 @@ export async function getContinuity(
  * ODP returns document metadata in several bag shapes. Walk the payload and
  * collect anything that carries a document code and a downloadable URL.
  */
+interface OdpDocumentRecord {
+  applicationNumberText?: string;
+  documentIdentifier?: string;
+  documentCode?: string;
+  documentCodeDescriptionText?: string;
+  officialDate?: string;
+  directionCategory?: string;
+  downloadOptionBag?: Array<{ mimeTypeIdentifier?: string; downloadUrl?: string; pageTotalQuantity?: number }>;
+}
+
 function collectDocuments(payload: unknown): Array<Record<string, unknown>> {
+  if (payload === null || typeof payload !== "object") return [];
+  const bag = (payload as { documentBag?: OdpDocumentRecord[] }).documentBag;
+  if (Array.isArray(bag)) {
+    return bag.map((record) => {
+      const options = record.downloadOptionBag ?? [];
+      const pdf = options.find((option) => option.mimeTypeIdentifier === "PDF") ?? options[0];
+      return {
+        documentIdentifier: record.documentIdentifier,
+        documentCode: record.documentCode,
+        description: record.documentCodeDescriptionText,
+        officialDate: record.officialDate?.slice(0, 10),
+        direction: record.directionCategory,
+        pages: pdf?.pageTotalQuantity,
+        downloadUrl: pdf?.downloadUrl,
+      };
+    });
+  }
   const found: Array<Record<string, unknown>> = [];
   const visit = (node: unknown): void => {
     if (Array.isArray(node)) {
@@ -197,11 +242,9 @@ function collectDocuments(payload: unknown): Array<Record<string, unknown>> {
     }
     if (node === null || typeof node !== "object") return;
     const record = node as Record<string, unknown>;
-    const hasCode = typeof record.documentCode === "string" || typeof record.documentIdentifier === "string";
-    const hasUrl = Object.entries(record).some(
-      ([key, value]) => /url|uri/i.test(key) && typeof value === "string" && /^https?:/.test(value),
-    );
-    if (hasCode && hasUrl) found.push(record);
+    if (typeof record.documentCode === "string" && typeof record.documentIdentifier === "string") {
+      found.push(record);
+    }
     for (const value of Object.values(record)) visit(value);
   };
   visit(payload);

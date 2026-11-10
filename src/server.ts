@@ -267,7 +267,7 @@ export function createServer(): McpServer {
     {
       title: "Search patents and published applications",
       description:
-        "Search USPTO file-wrapper metadata (ODP), worldwide publications (EPO OPS), the local bulk index, or the undocumented Patent Public Search. Auto mode tries documented sources first. Every hit carries provider, route, and retrieval time; undocumented sources are labeled.",
+        "Search USPTO file-wrapper metadata (ODP), worldwide publications (EPO OPS), the local bulk index, or the undocumented Patent Public Search. Auto mode tries documented sources first. Date bounds (from/to) are only honored by EPO OPS and the local index; ODP date filtering is not verified and is rejected. Every hit carries provider, route, and retrieval time; undocumented sources are labeled.",
       annotations: { readOnlyHint: true, openWorldHint: true },
       inputSchema: {
         query: z.string().min(1),
@@ -282,21 +282,74 @@ export function createServer(): McpServer {
     async ({ query, provider = "auto", limit = 20, from, to, sort, filters }) =>
       guard(async () => {
         const notes: string[] = [];
+        const hasDates = Boolean(from || to);
+
+        if (hasDates) {
+          const dateHint =
+            "ODP date-range filtering is not verified. Use provider ops (CQL pd within) or provider index (filing_date), or drop from/to.";
+          if (provider === "odp" || provider === "ppubs") {
+            throw new IpError("INVALID_INPUT", `${provider} does not support verified date bounds`, {
+              provider,
+              hint: dateHint,
+            });
+          }
+          if (provider === "ops") {
+            const result = await ops.search(query, { limit, from, to });
+            return ok({
+              total: result.total ?? result.hits.length,
+              hits: result.hits,
+              providers: ["ops"],
+              provenance: result.provenance,
+              notes,
+            });
+          }
+          if (provider === "index") {
+            const status = indexProvider.indexStatus();
+            if (!status.exists || status.patents === 0) {
+              throw new IpError("INVALID_INPUT", "the local index has no patents", {
+                hint: indexProvider.EMPTY_INDEX_WARNING,
+              });
+            }
+            const result = indexProvider.searchPatents(query, { limit, from, to });
+            return ok({ total: result.total, hits: result.hits, providers: ["index"], provenance: result.provenance, notes });
+          }
+          if (config.providers.ops.key && config.providers.ops.clientSecret) {
+            const result = await ops.search(query, { limit, from, to });
+            return ok({
+              total: result.total ?? result.hits.length,
+              hits: result.hits,
+              providers: ["ops"],
+              provenance: result.provenance,
+              notes,
+            });
+          }
+          const status = indexProvider.indexStatus();
+          if (status.exists && status.patents > 0) {
+            const result = indexProvider.searchPatents(query, { limit, from, to });
+            return ok({
+              total: result.total,
+              hits: result.hits,
+              providers: ["index"],
+              provenance: result.provenance,
+              notes: ["date bounds applied by the local index"],
+            });
+          }
+          throw new IpError("INVALID_INPUT", "no date-capable provider is configured", {
+            hint: "Configure EPO OPS credentials or build the local index. ODP date filtering is not verified.",
+          });
+        }
+
         const effectiveProvider = provider === "odp" ? "auto" : provider;
         if (provider === "odp" || provider === "auto") {
-          const rangeFilters = [
-            ...(from ? [{ field: "filingDate", valueFrom: from }] : []),
-            ...(to ? [{ field: "filingDate", valueTo: to }] : []),
-          ];
           if (provider === "odp" || config.providers.odp.key) {
             try {
               const result = await odp.searchApplications({
                 q: query,
                 limit,
                 filters,
-                rangeFilters: rangeFilters.length > 0 ? rangeFilters : undefined,
                 sort: sort === "date" ? [{ field: "filingDate", order: "desc" }] : undefined,
               });
+              notes.push("ODP sort and filter field names are not verified without the signed-in documentation.");
               return ok({
                 total: result.count,
                 hits: result.hits,

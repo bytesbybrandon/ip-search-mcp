@@ -7,6 +7,17 @@
 - **ODP API documentation requires a USPTO.gov sign-in.** Endpoint paths in this server come from the published OpenAPI surface and a bound client; response shapes for fields not exercised here can differ and surface as raw payloads rather than normalized hits.
 - **EPO OPS is not a US legal record.** It is bibliographic and family data; verify status and documents against USPTO records.
 
+## Verified against live providers, 2026-11-10
+
+Observed with real USPTO keys, then encoded in the tests and provider code.
+
+- **ODP free-text search works.** A plain-language phrase returned 425,510 matching applications with title, filing date, inventor, assignee, status, and application number normalized correctly.
+- **ODP answers a zero-hit search with HTTP 404** and `"No matching records found"`. The provider converts that to an empty result set, not an error.
+- **ODP date-range filtering is not verified.** Four documented shapes (`rangeFilters` with ISO dates, compact dates, and both `filingDate` and `applicationFilingDate`; `filters` with range strings) all returned 404 or 400. `patents_search` therefore rejects `from`/`to` for the ODP provider and routes date-bounded queries to EPO OPS or the local index. ODP sort and filter field names are likewise unverified.
+- **ODP documents live under `documentBag[].downloadOptionBag[]`.** The provider flattens them to code, description, official date, page count, and PDF URL. A 2026 application returned 53 documents.
+- **TSDR returns namespaced ST.96 XML.** With namespace prefixes removed, `ApplicationNumberText`, `RegistrationNumber`, `MarkVerbalElementText`, `NationalStatusExternalDescriptionText`, `ApplicationDate`, `RegistrationDate`, `ClassNumber`, and `EntityName` map correctly. Serial 87454105 returned DOCKER, ACTIVE, registration 6096739, Docker, Inc., class 9, and 57 documents.
+- **Not yet exercised live:** EPO OPS (no credentials), Patent Public Search, and the Trademark Search backend (both opt-in).
+
 ## Search quality
 
 - Text search is not classification search. A keyword result set can miss an entire CPC class.

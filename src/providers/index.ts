@@ -309,20 +309,35 @@ function provenance(route: string): Provenance {
 
 export function searchPatents(
   query: string,
-  options: { limit?: number; kind?: "grant" | "application"; dbPath?: string } = {},
+  options: { limit?: number; kind?: "grant" | "application"; dbPath?: string; from?: string; to?: string } = {},
 ): { hits: PatentHit[]; total: number; provenance: Provenance } {
   const db = openIndex(options.dbPath ?? config.indexDbPath, true);
   try {
     const limit = Math.min(options.limit ?? 20, 100);
+    const clauses: string[] = ["patents_fts MATCH ?"];
+    const values: Array<string | number> = [query];
+    if (options.kind) {
+      clauses.push("p.kind = ?");
+      values.push(options.kind);
+    }
+    if (options.from) {
+      clauses.push("p.filing_date >= ?");
+      values.push(options.from.replace(/[^0-9]/g, ""));
+    }
+    if (options.to) {
+      clauses.push("p.filing_date <= ?");
+      values.push(options.to.replace(/[^0-9]/g, ""));
+    }
+    values.push(limit);
     const rows = db
       .prepare(
         `SELECT p.doc_number, p.kind, p.title, p.abstract, p.filing_date, p.grant_date,
                 p.inventors, p.assignees, p.cpc, bm25(patents_fts) AS score
            FROM patents_fts JOIN patents p ON p.doc_number = patents_fts.doc_number
-          WHERE patents_fts MATCH ? ${options.kind ? "AND p.kind = ?" : ""}
+          WHERE ${clauses.join(" AND ")}
           ORDER BY score LIMIT ?`,
       )
-      .all(...(options.kind ? [query, options.kind, limit] : [query, limit])) as Array<Record<string, unknown>>;
+      .all(...values) as Array<Record<string, unknown>>;
 
     const hits: PatentHit[] = rows.map((row) => ({
       kind: "patent",

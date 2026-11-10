@@ -157,12 +157,16 @@ export function toOpsHit(document: ExchangeDocument, provenance: Provenance): Pa
 
 export async function search(
   q: string,
-  options: { offset?: number; limit?: number } = {},
+  options: { offset?: number; limit?: number; from?: string; to?: string } = {},
 ): Promise<{ hits: PatentHit[]; provenance: Provenance; total?: number }> {
   const offset = options.offset ?? 1;
   const limit = Math.min(options.limit ?? 25, 100);
   const range = `${offset}-${offset + limit - 1}`;
-  const result = await ops<unknown>("/3.2/rest-services/published-data/search", { q, Range: range });
+  const dateClause =
+    options.from || options.to
+      ? ` and pd within "${options.from ?? "1970-01-01"},${options.to ?? new Date().toISOString().slice(0, 10)}"`
+      : "";
+  const result = await ops<unknown>("/3.2/rest-services/published-data/search", { q: `${q}${dateClause}`, Range: range });
   const documents = findDocuments(result.data);
   const total = Number(textAt(result.data, "ops:world-patent-data", "ops:biblio-search", "@total-result-count"));
   return {

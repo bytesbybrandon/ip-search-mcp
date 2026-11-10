@@ -26,6 +26,11 @@ test("builds an FTS index over patent and trademark bulk XML", async () => {
   assert.match(patentHits.hits[0]?.title ?? "", /optical sensor/i);
   assert.equal(patentHits.hits[0]?.provenance.provider, "index");
 
+  const inRange = searchPatents("calibrating", { dbPath, from: "2009-01-01", to: "2011-12-31" });
+  assert.equal(inRange.hits.length, 1);
+  const outOfRange = searchPatents("calibrating", { dbPath, from: "2020-01-01" });
+  assert.equal(outOfRange.hits.length, 0);
+
   const trademarkHits = searchTrademarks("acme", { dbPath });
   assert.equal(trademarkHits.hits.length, 1);
   assert.equal(trademarkHits.hits[0]?.markText, "ACME GIZMO");
