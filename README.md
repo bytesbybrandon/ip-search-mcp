@@ -126,6 +126,23 @@ Every tool, its inputs, and whether it writes a file is documented in [docs/TOOL
 
 ---
 
+#### Shell Interface: `ip-axi`
+
+An AXI-compliant CLI over the same tools, for shell use and scripted work.
+
+```bash
+node dist/src/axi/index.js                                  # live provider and index status
+node dist/src/axi/index.js patents search "optical sensor" --limit 5
+node dist/src/axi/index.js patents docs 19131214 --code CTNF
+node dist/src/axi/index.js trademarks get 87454105
+node dist/src/axi/index.js drawings validate ip/drawings/fig-1.svg --description @ip/specification.md
+node dist/src/axi/index.js index build --from <dir-of-bulk-xml>
+```
+
+Run `npm link` once in the repo to put `ip-axi` on PATH; afterwards the bare command works from any directory. `pnpm exec ip-axi` also works inside the repo. `npx -y ip-axi` works only after the package is published.
+
+Output is TOON, every list prints totals, `--fields` adds columns, `--full` stops truncation, exit codes are 0 success / 1 error / 2 usage, errors carry a fixing command, and every result ends with a `next[]` block. Full command reference: [skills/ip-axi/SKILL.md](skills/ip-axi/SKILL.md).
+
 ### Running Tests
 
 ```bash
@@ -158,11 +175,13 @@ src/
   http.ts         fetch, retry, rate limit, cache, host check
   domain/         assessment, claims, disclosure, drawings, spec
   providers/      ODP, TSDR, EPO OPS, PPUBS, tmsearch, local index
+  axi/            ip-axi shell interface (TOON output, flags, exit codes)
   numbers.ts      patent and trademark identifier normalization
   errors.ts       typed errors
   types.ts        shared types
 test/             node --test suites and XML fixtures
 docs/             architecture, credentials, limits, tools, local index
+skills/ip-axi/    AXI command reference
 .github/          community files and CI
 ```
 

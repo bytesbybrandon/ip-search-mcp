@@ -13,17 +13,18 @@ test("builds an FTS index over patent and trademark bulk XML", async () => {
   const dbPath = join(dir, "test.sqlite");
   const result = await buildIndex(fixtures, dbPath);
   assert.equal(result.patents, 1);
-  assert.equal(result.trademarks, 1);
+  assert.equal(result.trademarks, 3);
 
   const status = indexStatus(dbPath);
   assert.equal(status.patents, 1);
-  assert.equal(status.trademarks, 1);
+  assert.equal(status.trademarks, 3);
   assert.ok(status.builtAt);
 
   const patentHits = searchPatents("calibrating", { dbPath });
   assert.equal(patentHits.hits.length, 1);
   assert.equal(patentHits.hits[0]?.number, "9765584");
   assert.match(patentHits.hits[0]?.title ?? "", /optical sensor/i);
+  assert.equal(patentHits.hits[0]?.filingDate, "2010-01-01");
   assert.equal(patentHits.hits[0]?.provenance.provider, "index");
 
   const inRange = searchPatents("calibrating", { dbPath, from: "2009-01-01", to: "2011-12-31" });
@@ -35,6 +36,12 @@ test("builds an FTS index over patent and trademark bulk XML", async () => {
   assert.equal(trademarkHits.hits.length, 1);
   assert.equal(trademarkHits.hits[0]?.markText, "ACME GIZMO");
   assert.deepEqual(trademarkHits.hits[0]?.internationalClasses, [9]);
+
+  const second = searchTrademarks("alpha", { dbPath });
+  assert.equal(second.hits.length, 1);
+  assert.equal(second.hits[0]?.markText, "ALPHA ONE");
+  assert.equal(second.hits[0]?.filingDate, "2024-01-01");
+  assert.equal(second.hits[0]?.owner, "Alpha Company");
 
   await rm(dir, { recursive: true, force: true });
 });
