@@ -2,6 +2,49 @@
 
 This server never asks a tool caller for a key. Keys come from the process environment, and each key is bound to one host.
 
+## Where to put a key
+
+Pick one location per use.
+
+**Agents and MCP clients.** Fill the `env` block of the `ip-search-mcp` entry in `~/.agents/mcp.json`, then restart the harness so the server is respawned:
+
+```json
+"ip-search-mcp": {
+  "command": "node",
+  "args": ["C:/Users/brand/Desktop/ip-search-mcp/dist/src/index.js"],
+  "env": {
+    "USPTO_ODP_API_KEY": "your-odp-key",
+    "USPTO_TSDR_API_KEY": "your-tsdr-key"
+  }
+}
+```
+
+Empty strings are treated as unset, so leaving a slot blank is safe.
+
+**Your shell, for CLI runs and tests.** Set the variables for the session, or persist them to the user profile:
+
+```powershell
+$env:USPTO_ODP_API_KEY = "your-odp-key"
+$env:USPTO_TSDR_API_KEY = "your-tsdr-key"
+[Environment]::SetEnvironmentVariable("USPTO_ODP_API_KEY", "your-odp-key", "User")
+```
+
+**A local `.env` file.** The server does not load `.env` by itself. Pass it explicitly:
+
+```bash
+node --env-file=.env dist/src/index.js
+```
+
+`.env` is gitignored. Never put a key in a tool argument, a prompt, a commit, or a skill file.
+
+**Verify.** This prints booleans only, never key values:
+
+```bash
+node dist/src/index.js status
+```
+
+A provider shows `configured: true` only when its full set of variables is non-empty.
+
 ## USPTO Open Data Portal (ODP)
 
 Used for: patent file wrapper search, metadata, continuity, documents, bulk products.

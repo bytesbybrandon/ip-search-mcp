@@ -1,5 +1,5 @@
 import { indexStatus, buildIndex } from "./providers/index.js";
-import { config } from "./config.js";
+import { config, credentialStates } from "./config.js";
 
 const HELP = `ip-search-mcp
 
@@ -7,6 +7,7 @@ Usage:
   ip-search-mcp                     Start the MCP server on stdio
   ip-search-mcp index build --from <dir> [--db <path>]
   ip-search-mcp index status [--db <path>]
+  ip-search-mcp status              Report which provider keys are visible to this process
   ip-search-mcp rules               Print the encoded 37 CFR 1.84 rule set
   ip-search-mcp --help
 
@@ -33,6 +34,21 @@ export async function runCli(args: string[]): Promise<number> {
 
   if (args.includes("--help") || args.includes("-h") || group === "help") {
     process.stdout.write(HELP);
+    return 0;
+  }
+
+  if (group === "status") {
+    const report = {
+      allowUnofficial: config.allowUnofficial,
+      providers: credentialStates().map((state) => ({
+        provider: state.provider,
+        configured: state.configured,
+        required: state.required,
+        host: state.host,
+      })),
+      index: indexStatus(),
+    };
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return 0;
   }
 

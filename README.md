@@ -37,6 +37,14 @@ Register it with an MCP client over stdio:
 
 No keys are required to run; without them keyed tools return a `CREDENTIAL_MISSING` error with setup instructions, and unkeyed sources are what remain.
 
+Where keys go, and how to verify them without printing their values:
+
+```bash
+node dist/src/index.js status
+```
+
+See `CREDENTIALS.md` for the MCP `env` block, shell variables, and `--env-file`.
+
 ## Tools
 
 | Tool | Reads | Writes | Notes |
