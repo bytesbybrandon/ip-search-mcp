@@ -25,6 +25,8 @@ src/server.ts  (tool registration, zod input schemas, output formatting)
 
 Domain modules never import providers. Providers never format user-facing text. The server composes them.
 
+`ip-axi` sits beside the server as a presentation layer. It creates the same server in process, connects over an in-memory MCP transport, and calls tools through the MCP client, so command behavior cannot drift from tool behavior. Only formatting, flag parsing, and exit codes live in `src/axi/`.
+
 ## Provider boundaries
 
 | Provider | Host | Auth | Stability |

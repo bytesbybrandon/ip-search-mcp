@@ -69,6 +69,25 @@ See `CREDENTIALS.md` for the MCP `env` block, shell variables, and `--env-file`.
 | `attorney_packet` | yes | optional file | Review packet |
 | `index_build` | yes | yes | Local FTS5 index over bulk XML |
 
+## Shell interface: `ip-axi`
+
+An AXI-compliant CLI over the same tools, for shell use and scripted work.
+
+```bash
+node dist/src/axi/index.js                                  # live provider and index status
+node dist/src/axi/index.js patents search "optical sensor" --limit 5
+node dist/src/axi/index.js patents docs 19131214 --code CTNF
+node dist/src/axi/index.js trademarks get 87454105
+node dist/src/axi/index.js drawings validate ip/drawings/fig-1.svg --description @ip/specification.md
+node dist/src/axi/index.js index build --from <dir-of-bulk-xml>
+```
+
+After a local install, `pnpm exec ip-axi` works. `npx -y ip-axi` works only after the package is published.
+
+Behavior: TOON output, totals on every list, `--fields` for extra columns, `--full` to stop truncation, exit codes 0 success / 1 error / 2 usage, structured errors on stdout with a fixing command, and a `next[]` block after every result.
+
+`axi-axi validate` reports 11 pass, 0 fail, 1 warn on Windows. The warning is the validator's own limitation: it spawns `npm` without the `.cmd` suffix, so its skill freshness probe cannot start. `npm run skill:check` passes directly and is the real check.
+
 ## Local index
 
 ```bash
