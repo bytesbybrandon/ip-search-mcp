@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "plan_hash": "05bbfadd2342935eae3feec44c68623363e5c87c90f7bdba2be1b22d5b5b1720",
+  "source_fingerprint": "a04c825719c8fe9568ec40bbfa9b47c2efe71b3698ba2e19c4e65eb485f602b2",
+  "checkpoint_hash": null,
+  "status": "verified",
+  "operations": [
+    {
+      "id": "OP-001",
+      "type": "edit",
+      "path": "README.md",
+      "status": "completed",
+      "output_hash": "c24d6f9174f00e216a607001e9be9a4dd999170cf607a722faac608d60b647b4"
+    }
+  ]
+}
