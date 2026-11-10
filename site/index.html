@@ -3,13 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>document.documentElement.className = "js";</script>
+<script>
+(function () {
+  var d = document.documentElement;
+  d.className = "js";
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    d.classList.add("compose");
+    // Safety net: if the page script never boots, show the finished answer.
+    setTimeout(function () { if (!window.__composeBoot) d.classList.remove("compose"); }, 4000);
+  }
+})();
+</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a1d24'/%3E%3Crect x='6.5' y='5.5' width='19' height='21' fill='none' stroke='%23f4f1ea' stroke-width='1.4'/%3E%3Cline x1='10' y1='21' x2='22' y2='21' stroke='%23d4553a' stroke-width='1.6'/%3E%3C/svg%3E">
 <title>ip-search-mcp: patent and trademark research for agents</title>
 <meta name="description" content="An MCP server and CLI for patent and trademark research, 37 CFR 1.84 drawing validation, and review-only drafting. Provenance on every hit. Nothing is filed.">
 <meta property="og:title" content="ip-search-mcp">
 <meta property="og:description" content="Patent research your agent can cite. Nothing is filed.">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://bytesbybrandon.github.io/ip-search-mcp/">
+<meta property="og:image" content="https://bytesbybrandon.github.io/ip-search-mcp/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A cited answer: DOCKER is active, owned by Docker, Inc., with each fact joined to the line of recorded output that proves it.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://bytesbybrandon.github.io/ip-search-mcp/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500&family=Atkinson+Hyperlegible+Mono:wght@400;500&family=Instrument+Serif&display=swap" rel="stylesheet">
@@ -38,15 +55,23 @@
       <div class="hero__text">
         <h1 id="hero-title">Patent research your agent can cite.</h1>
         <p class="lead">Every hit arrives with its provider, route and retrieval time.</p>
-        <div class="picker" role="group" aria-label="Install for">
-          <span class="label">Install for</span>
-          <button class="pick" type="button" data-client-pick="claude" aria-pressed="true">Claude Code</button>
-          <button class="pick" type="button" data-client-pick="cursor" aria-pressed="false">Cursor</button>
-          <button class="pick" type="button" data-client-pick="desktop" aria-pressed="false">Claude Desktop</button>
+        <div class="install">
+        <div class="picker" role="radiogroup" aria-label="Install for">
+          <label class="pick"><input type="radio" name="client-hero" value="claude" data-client-pick="claude" checked><span>Claude Code</span></label>
+          <label class="pick"><input type="radio" name="client-hero" value="cursor" data-client-pick="cursor"><span>Cursor</span></label>
+          <label class="pick"><input type="radio" name="client-hero" value="desktop" data-client-pick="desktop"><span>Claude Desktop</span></label>
+        </div>
+        <div class="cmd plate" role="group" aria-label="Install command">
+          <p class="label" data-client-path>terminal</p>
+          <div class="cmd__row">
+            <code class="cmd__text" data-cmd>claude mcp add ip-search-mcp -- npx -y ip-search-mcp</code>
+            <button class="btn btn--primary" type="button" data-copy-client aria-label="Copy the install command">Copy</button>
+          </div>
+          <span class="visually-hidden" data-copy-status aria-live="polite"></span>
+        </div>
         </div>
         <div class="actions">
-          <button class="btn btn--primary" type="button" data-copy-client>Copy the install command</button>
-          <a class="btn" href="#sheet">See a sheet corrected</a>
+          <a class="link" href="#sheet">See a sheet corrected</a>
         </div>
       </div>
 
@@ -79,10 +104,12 @@
               <code class="ln">classes: 9</code>
               <code class="ln">next[1]:</code>
               <code class="ln">  ip-axi trademarks docs 87454105</code>
-              <code class="ln ln--lead ln--first" data-ref="16"><span>provider: tsdr</span></code>
+              <span class="ln-sep" aria-hidden="true"></span>
+              <code class="ln ln--lead" data-ref="16"><span>provider: tsdr</span></code>
               <code class="ln" data-ref="16"><span>route: GET /ts/cd/casestatus/sn87454105/info</span></code>
               <code class="ln" data-ref="16"><span>retrieved: 2026-11-10</span></code>
             </div>
+            <p class="record__src"><a href="https://tsdr.uspto.gov/#caseNumber=87454105&amp;caseType=SERIAL_NO&amp;searchType=statusSearch" target="_blank" rel="noopener noreferrer">Open at TSDR</a></p>
           </div>
         </div>
 
@@ -102,10 +129,12 @@
               <code class="ln">  ip-axi status</code>
               <code class="ln">help[1]:</code>
               <code class="ln">  ODP sort and filter field names are not verified without the signed-in documentation.</code>
-              <code class="ln ln--lead ln--first" data-ref="14"><span>provider: odp</span></code>
+              <span class="ln-sep" aria-hidden="true"></span>
+              <code class="ln ln--lead" data-ref="14"><span>provider: odp</span></code>
               <code class="ln" data-ref="14"><span>route: POST /api/v1/patent/applications/search</span></code>
               <code class="ln" data-ref="14"><span>retrieved: 2026-11-10</span></code>
             </div>
+            <p class="record__src"><a href="https://data.uspto.gov/" target="_blank" rel="noopener noreferrer">Open the ODP portal</a></p>
           </div>
         </div>
 
@@ -124,10 +153,12 @@
               <code class="ln">refs: 10,12,14,16</code>
               <code class="ln">findings[2]{severity,rule,citation,message}:</code>
               <code class="ln ln--lead" data-ref="16"><span>  warning,text.place,"37 CFR 1.84(p)(3), (p)(5)",reference character 14 appears in the drawing but not in the description</span></code>
-              <code class="ln ln--first">source: 37 CFR 1.84</code>
+              <span class="ln-sep" aria-hidden="true"></span>
+              <code class="ln">source: 37 CFR 1.84</code>
               <code class="ln">rules: 17</code>
               <code class="ln">validator: local</code>
             </div>
+            <p class="record__src"><a href="https://www.ecfr.gov/current/title-37/chapter-I/subchapter-A/part-1/subpart-B/subject-group-ECFRc7605aa2d3f3782/section-1.84" target="_blank" rel="noopener noreferrer">Read 1.84 at eCFR</a></p>
           </div>
         </div>
         </div>
@@ -161,6 +192,7 @@
             </li>
           </ol>
           <button class="btn pass__replay" type="button" data-pass-replay hidden>Show the defects</button>
+          <a class="pass__skip" href="#clock">Skip to the clock</a>
         </div>
 
         <figure class="pass__sheet">
@@ -192,6 +224,26 @@
               <rect class="pen pen--1" x="21" y="86" width="136" height="96" rx="2"/>
               <circle class="pen pen--2" cx="82" cy="135" r="22"/>
               <rect class="pen pen--3" x="182" y="122" width="12" height="40" rx="2"/>
+            </g>
+            <g class="dims" aria-hidden="true">
+              <g class="dim dim--1">
+                <line class="dim__line" x1="0" y1="78" x2="1" y2="78"/>
+                <line class="dim__tick" x1="0" y1="75.5" x2="0" y2="80.5"/>
+                <line class="dim__tick dim__tick--end" x1="0" y1="75.5" x2="0" y2="80.5"/>
+                <text class="val val--bad val--1" x="2" y="74.4">8 mm</text>
+                <text class="val val--ok val--1" x="2" y="74.4">25 mm</text>
+              </g>
+              <g class="dim dim--2">
+                <line class="dim__lead" x1="82" y1="103" x2="82" y2="117.6"/>
+                <text class="val val--bad val--2" x="82" y="101.6" text-anchor="middle">0.10 mm</text>
+                <text class="val val--ok val--2" x="82" y="101.6" text-anchor="middle">0.50 mm</text>
+              </g>
+              <g class="dim dim--3">
+                <line class="dim__floor" x1="177" y1="127.8" x2="194" y2="127.8"/>
+                <text class="dim__note" x="175.6" y="129" text-anchor="end">3.2 mm</text>
+                <text class="val val--bad val--3" x="188" y="118.4" text-anchor="middle">2.0 mm</text>
+                <text class="val val--ok val--3" x="188" y="118.4" text-anchor="middle">5.0 mm</text>
+              </g>
             </g>
             <g class="sheet__block" transform="translate(25 214)">
               <line class="block__rule" x1="0" y1="0" x2="170" y2="0"/>
@@ -230,8 +282,8 @@
         <h2 id="clock-title">Your first disclosure starts a one-year clock.</h2>
         <p class="lead">Enter the day it first went public.</p>
         <form class="clock__form" data-clock-form>
-          <label class="field"><span class="label">First public disclosure</span><input type="date" data-clock-date required></label>
-          <label class="field"><span class="label">Planned filing date, optional</span><input type="date" data-clock-plan></label>
+          <label class="field"><span class="label">First public disclosure</span><input type="date" name="disclosure-date" data-clock-date required></label>
+          <label class="field"><span class="label">Planned filing date, optional</span><input type="date" name="planned-filing-date" data-clock-plan></label>
         </form>
         <p class="note">The same arithmetic as disclosure_review. Not legal advice.</p>
       </div>
@@ -285,11 +337,19 @@
           <p class="stats__big measured">7,330</p>
           <p class="stats__unit">trademark records indexed in 60 seconds.</p>
         </div>
-        <dl class="stats__list">
-          <div><dt class="label">MCP tools</dt><dd class="measured">19</dd></div>
-          <div><dt class="label">drawing rules</dt><dd class="measured">17</dd></div>
-          <div><dt class="label">tests</dt><dd class="measured">37</dd></div>
-        </dl>
+        <div class="stats__tools">
+          <p class="label">The 19 tools</p>
+          <dl class="tools">
+            <div><dt>Patents</dt><dd class="measured"><code>patents_search</code><code>patent_get</code><code>patent_documents</code><code>patent_family</code></dd></div>
+            <div><dt>Trademarks</dt><dd class="measured"><code>trademarks_search</code><code>trademark_get</code><code>trademark_documents</code></dd></div>
+            <div><dt>Research</dt><dd class="measured"><code>concept_assessment</code><code>prior_art_report</code></dd></div>
+            <div><dt>Drawings</dt><dd class="measured"><code>drawing_spec</code><code>drawing_validate</code><code>drawing_rules</code></dd></div>
+            <div><dt>Drafting</dt><dd class="measured"><code>application_draft</code><code>claims_draft</code></dd></div>
+            <div><dt>Review</dt><dd class="measured"><code>application_lint</code><code>disclosure_review</code><code>attorney_packet</code></dd></div>
+            <div><dt>Setup</dt><dd class="measured"><code>credential_status</code><code>index_build</code></dd></div>
+          </dl>
+          <p class="tools__more"><a href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/TOOLS.md">Tool reference</a></p>
+        </div>
       </div>
     </div>
   </section>
@@ -301,10 +361,10 @@
         <p class="lead">Research and drafts, for a licensed practitioner to review.</p>
       </div>
       <div class="close__install">
-        <div class="picker picker--wide" role="group" aria-label="Client">
-          <button class="pick" type="button" data-client-pick="claude" aria-pressed="true">Claude Code</button>
-          <button class="pick" type="button" data-client-pick="cursor" aria-pressed="false">Cursor</button>
-          <button class="pick" type="button" data-client-pick="desktop" aria-pressed="false">Claude Desktop</button>
+        <div class="picker picker--wide" role="radiogroup" aria-label="Client">
+          <label class="pick"><input type="radio" name="client-install" value="claude" data-client-pick="claude" checked><span>Claude Code</span></label>
+          <label class="pick"><input type="radio" name="client-install" value="cursor" data-client-pick="cursor"><span>Cursor</span></label>
+          <label class="pick"><input type="radio" name="client-install" value="desktop" data-client-pick="desktop"><span>Claude Desktop</span></label>
         </div>
         <div class="install__out">
           <p class="label" data-client-path>terminal</p>
@@ -312,7 +372,7 @@
 claude mcp list</code></pre>
           <div class="install__row">
             <label class="keys">
-              <input type="checkbox" data-keys>
+              <input type="checkbox" name="include-keys" data-keys>
               <span>Include key placeholders</span>
             </label>
             <div class="actions">
@@ -335,24 +395,29 @@ claude mcp list</code></pre>
 </main>
 
 <footer class="footer plate">
-  <div class="container footer__grid">
-    <p class="wordmark">ip-search-mcp</p>
-    <nav aria-label="Footer">
-      <a href="https://github.com/bytesbybrandon/ip-search-mcp">GitHub</a>
-      <a href="https://www.npmjs.com/package/ip-search-mcp">npm</a>
-      <a href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/TOOLS.md">Tools</a>
-      <a href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/LIMITS.md">Limits</a>
-    </nav>
-    <div class="colophon">
-      <p class="note">Rules encoded from eCFR title 37, retrieved 2026-11-10. Keys stay local. MIT licensed.</p>
-      <p class="note">Research and drafts for review by a licensed practitioner. Not legal advice. Nothing is filed.</p>
+  <div class="container">
+    <div class="tblock">
+      <p class="tblock__mark wordmark">ip-search-mcp</p>
+      <p class="tblock__cell"><span class="label">Rules</span><span class="measured">eCFR title 37</span></p>
+      <p class="tblock__cell"><span class="label">Retrieved</span><span class="measured">2026-11-10</span></p>
+      <p class="tblock__cell"><span class="label">License</span><span class="measured">MIT</span></p>
+      <div class="tblock__notice">
+        <p class="label">Notice</p>
+        <p>Keys stay local. Research and drafts for review by a licensed practitioner. Not legal advice. Nothing is filed.</p>
+      </div>
+      <nav class="tblock__links" aria-label="Footer">
+        <a href="https://github.com/bytesbybrandon/ip-search-mcp">GitHub</a>
+        <a href="https://www.npmjs.com/package/ip-search-mcp">npm</a>
+        <a href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/TOOLS.md">Tools</a>
+        <a href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/LIMITS.md">Limits</a>
+      </nav>
     </div>
   </div>
 </footer>
 
 <div class="dock" data-dock aria-hidden="true" inert>
   <label class="dock__pick"><span class="visually-hidden">Client</span>
-    <select data-client-select>
+    <select name="client" data-client-select>
       <option value="claude">Claude Code</option>
       <option value="cursor">Cursor</option>
       <option value="desktop">Claude Desktop</option>
@@ -370,35 +435,52 @@ claude mcp list</code></pre>
   /* ---------- clients: one state, three pickers ---------- */
   const jsonPlain = '{\n  "mcpServers": {\n    "ip-search-mcp": {\n      "command": "npx",\n      "args": ["-y", "ip-search-mcp"]\n    }\n  }\n}';
   const jsonKeys = '{\n  "mcpServers": {\n    "ip-search-mcp": {\n      "command": "npx",\n      "args": ["-y", "ip-search-mcp"],\n      "env": {\n        "USPTO_ODP_API_KEY": "...",\n        "USPTO_TSDR_API_KEY": "..."\n      }\n    }\n  }\n}';
+  const jsonLine = '{"mcpServers":{"ip-search-mcp":{"command":"npx","args":["-y","ip-search-mcp"]}}}';
   const clients = {
     claude: {
       label: "Claude Code",
       path: "terminal",
+      line: "claude mcp add ip-search-mcp -- npx -y ip-search-mcp",
       plain: "claude mcp add ip-search-mcp -- npx -y ip-search-mcp\nclaude mcp list",
       keys: "claude mcp add ip-search-mcp -e USPTO_ODP_API_KEY=... -e USPTO_TSDR_API_KEY=... -- npx -y ip-search-mcp\nclaude mcp list",
     },
-    cursor: { label: "Cursor", path: "~/.cursor/mcp.json", plain: jsonPlain, keys: jsonKeys },
-    desktop: { label: "Claude Desktop", path: "claude_desktop_config.json", plain: jsonPlain, keys: jsonKeys },
+    cursor: { label: "Cursor", path: "~/.cursor/mcp.json", line: jsonLine, plain: jsonPlain, keys: jsonKeys },
+    desktop: { label: "Claude Desktop", path: "claude_desktop_config.json", line: jsonLine, plain: jsonPlain, keys: jsonKeys },
   };
   let current = "claude";
   const config = document.querySelector("[data-config]");
-  const pathEl = document.querySelector("[data-client-path]");
+  const pathEls = document.querySelectorAll("[data-client-path]");
+  const cmdEl = document.querySelector("[data-cmd]");
   const keysToggle = document.querySelector("[data-keys]");
   const select = document.querySelector("[data-client-select]");
   const renderClient = () => {
     const entry = clients[current];
     if (config) config.textContent = keysToggle && keysToggle.checked ? entry.keys : entry.plain;
-    if (pathEl) pathEl.textContent = entry.path;
-    document.querySelectorAll("[data-client-pick]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.clientPick === current)));
+    pathEls.forEach((el) => { el.textContent = entry.path; });
+    if (cmdEl) {
+      // Each shell word is one unbreakable unit, so the command wraps between words, never inside "ip-search-mcp".
+      const wrap = document.createElement("span");
+      wrap.className = "cmd__tokens";
+      entry.line.split(" ").forEach((word, i) => {
+        if (i) wrap.append(" ");
+        const tok = document.createElement("span");
+        tok.className = "tok";
+        tok.textContent = word;
+        wrap.append(tok);
+      });
+      cmdEl.replaceChildren(wrap);
+    }
+    document.querySelectorAll("[data-client-pick]").forEach((b) => { b.checked = b.dataset.clientPick === current; });
     if (select) select.value = current;
   };
-  document.querySelectorAll("[data-client-pick]").forEach((b) => b.addEventListener("click", () => { current = b.dataset.clientPick; renderClient(); }));
+  document.querySelectorAll("[data-client-pick]").forEach((b) => b.addEventListener("change", () => { current = b.dataset.clientPick; renderClient(); }));
   if (select) select.addEventListener("change", () => { current = select.value; renderClient(); });
   if (keysToggle) keysToggle.addEventListener("change", renderClient);
   renderClient();
 
   /* ---------- copy ---------- */
   const labels = new WeakMap();
+  const live = document.querySelector("[data-copy-status]");
   const prompts = {
     clock: () => window.__clockPrompt || "",
   };
@@ -406,12 +488,12 @@ claude mcp list</code></pre>
     labels.set(button, button.textContent);
     button.addEventListener("click", async () => {
       let text = "";
-      if (button.dataset.copyClient !== undefined) text = clients[current].plain;
+      if (button.dataset.copyClient !== undefined) text = clients[current].line;
       else if (button.dataset.copyFn) text = prompts[button.dataset.copyFn]();
       else { const target = document.querySelector(button.dataset.copy); text = target ? target.innerText : ""; }
-      try { await navigator.clipboard.writeText(text); button.textContent = "Copied"; }
-      catch { button.textContent = "Select and copy"; }
-      setTimeout(() => { button.textContent = labels.get(button); }, 2400);
+      try { await navigator.clipboard.writeText(text); button.textContent = "Copied"; if (live) live.textContent = "Copied to the clipboard"; }
+      catch { button.textContent = "Select and copy"; if (live) live.textContent = "Copy failed. Select the text and copy it."; }
+      setTimeout(() => { button.textContent = labels.get(button); if (live) live.textContent = ""; }, 2400);
     });
   });
 
@@ -425,7 +507,7 @@ claude mcp list</code></pre>
       panel.querySelectorAll("[data-ref]").forEach((el) => el.classList.toggle("is-active", ref !== null && el.dataset.ref === ref));
     };
     const stopTour = () => { clearTimeout(timer); timer = 0; };
-    const tour = (panel) => {
+    const tour = (panel, delay = 1100) => {
       stopTour();
       if (reduced) return;
       const refs = [...new Set([...panel.querySelectorAll(".cite")].map((c) => c.dataset.ref))].sort();
@@ -434,7 +516,7 @@ claude mcp list</code></pre>
         if (i < refs.length) { activate(panel, refs[i]); i += 1; timer = setTimeout(step, 1500); }
         else { activate(panel, null); timer = 0; }
       };
-      timer = setTimeout(step, 1100);
+      timer = setTimeout(step, delay);
     };
     panels.forEach((panel) => {
       panel.addEventListener("pointerover", (e) => { const t = e.target.closest("[data-ref]"); if (t) { stopTour(); activate(panel, t.dataset.ref); } });
@@ -443,10 +525,25 @@ claude mcp list</code></pre>
       panel.addEventListener("focusout", () => activate(panel, null));
       panel.addEventListener("click", (e) => { const t = e.target.closest(".cite"); if (t) { stopTour(); activate(panel, t.dataset.ref); } });
     });
+    /* The one authored moment: the record streams in, then the answer lands, then the citations walk the lines. */
+    let staged = [];
+    const later = (fn, ms) => staged.push(setTimeout(fn, ms));
+    panels.forEach((panel) => panel.querySelectorAll(".record__out > *").forEach((el, i) => el.style.setProperty("--i", String(i + 1))));
+    const play = (panel) => {
+      staged.forEach(clearTimeout); staged = [];
+      stopTour();
+      panel.removeAttribute("data-play");
+      if (reduced) { panel.dataset.play = "done"; return; }
+      void panel.offsetWidth;
+      panel.dataset.play = "out";
+      const settle = 260 + panel.querySelectorAll(".record__out > *").length * 55 + 120;
+      later(() => { panel.dataset.play = "answer"; }, settle);
+      later(() => { panel.dataset.play = "done"; tour(panel, 900); }, settle + 800);
+    };
     const open = (name) => {
       tabs.forEach((tab) => { const on = tab.dataset.tab === name; tab.setAttribute("aria-selected", String(on)); tab.tabIndex = on ? 0 : -1; });
       panels.forEach((panel) => { panel.hidden = panel.dataset.panel !== name; if (panel.hidden) activate(panel, null); });
-      tour(panels.find((p) => p.dataset.panel === name));
+      play(panels.find((p) => p.dataset.panel === name));
     };
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => open(tab.dataset.tab));
@@ -470,7 +567,8 @@ claude mcp list</code></pre>
     lock();
     window.addEventListener("resize", lock, { passive: true });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(lock);
-    tour(panels[0]);
+    play(panels[0]);
+    window.__composeBoot = true;
   }
 
   /* ---------- the pinned pass ---------- */
@@ -481,7 +579,7 @@ claude mcp list</code></pre>
     const statusEl = pass.querySelector("[data-pass-status]");
     const replay = pass.querySelector("[data-pass-replay]");
     const ruleList = pass.querySelector("[data-rules]");
-    const wide = window.matchMedia("(min-width: 61rem)");
+    const wide = window.matchMedia("(min-width: 60.01rem)");
     let ts = [1, 1, 1];
     const paint = (t) => {
       ts = t;
@@ -498,12 +596,34 @@ claude mcp list</code></pre>
       const errors = 3 - done;
       statusEl.textContent = errors === 0 ? "ok: true, errors: 0" : "ok: false, errors: " + errors;
     };
+    /* The camera: scroll flies the view over the sheet to each defect, then pulls back. Windows are x, y, width in sheet millimetres. */
+    const svg = pass.querySelector(".sheet");
+    const VIEW = { all: [0, 0, 210], margin: [0, 30, 120], line: [38, 73, 88], ref: [126, 92, 84] };
+    const SHOTS = [[0, "all"], [0.07, "margin"], [0.3, "margin"], [0.38, "line"], [0.56, "line"], [0.64, "ref"], [0.86, "ref"], [0.97, "all"]];
+    const DWELL = [[0.07, 0.3], [0.38, 0.56], [0.64, 0.86]];
+    const view = (p) => {
+      if (p <= SHOTS[0][0]) return VIEW[SHOTS[0][1]];
+      for (let i = 1; i < SHOTS.length; i += 1) {
+        if (p > SHOTS[i][0]) continue;
+        const [p0, from] = SHOTS[i - 1]; const [p1, to] = SHOTS[i];
+        const k = ease(clamp((p - p0) / (p1 - p0)));
+        return VIEW[from].map((v, j) => v + (VIEW[to][j] - v) * k);
+      }
+      return VIEW[SHOTS[SHOTS.length - 1][1]];
+    };
+    const home = () => {
+      svg.setAttribute("viewBox", "0 0 210 297");
+      [1, 2, 3].forEach((n) => stage.style.setProperty("--c" + n, "0"));
+    };
     const scrub = () => {
       const rect = pass.getBoundingClientRect();
       const travel = Math.max(1, rect.height - window.innerHeight);
       const p = clamp(-rect.top / travel);
       const phase = (start, end) => ease(clamp((p - start) / (end - start)));
-      paint([phase(0.08, 0.34), phase(0.36, 0.62), phase(0.64, 0.9)]);
+      const [x, y, w] = view(p);
+      svg.setAttribute("viewBox", [x, y, w, w * (297 / 210)].map((v) => v.toFixed(2)).join(" "));
+      DWELL.forEach(([a, b], i) => stage.style.setProperty("--c" + (i + 1), (clamp((p - (a - 0.03)) / 0.03) * clamp((b + 0.03 - p) / 0.03)).toFixed(3)));
+      paint([phase(0.11, 0.25), phase(0.42, 0.52), phase(0.7, 0.82)]);
     };
     let frame = 0;
     const onScroll = () => { if (!frame) frame = requestAnimationFrame(() => { frame = 0; scrub(); }); };
@@ -528,6 +648,7 @@ claude mcp list</code></pre>
       } else {
         replay.hidden = false;
         replay.textContent = "Show the defects";
+        home();
         paint([1, 1, 1]);
       }
     };
@@ -637,5 +758,4 @@ claude mcp list</code></pre>
 </script>
 </body>
 </html>
-        </div>
 
