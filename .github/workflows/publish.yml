@@ -56,11 +56,8 @@ jobs:
               exit 1
             fi
           done
-      - name: OIDC claims
-        run: |
-          node -e 'const u=new URL(process.env.ACTIONS_ID_TOKEN_REQUEST_URL);u.searchParams.set("audience","npm:registry.npmjs.org");fetch(u,{headers:{authorization:`Bearer ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}`}}).then(r=>r.json()).then(({value})=>{const p=JSON.parse(Buffer.from(value.split(".")[1],"base64url"));console.log(JSON.stringify({aud:p.aud,iss:p.iss,repository:p.repository,ref:p.ref,job_workflow_ref:p.job_workflow_ref,environment:p.environment??null,event_name:p.event_name},null,2))})'
       - name: Publish ip-search-mcp
-        run: npm publish --provenance --access public --loglevel verbose
+        run: npm publish --provenance --access public
       - name: Publish ip-axi
         working-directory: packages/ip-axi
         run: npm publish --provenance --access public
