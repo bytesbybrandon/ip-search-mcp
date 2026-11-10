@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23141417'/%3E%3Crect x='6.5' y='5.5' width='19' height='21' fill='none' stroke='%23f2efe9' stroke-width='1.4'/%3E%3Cline x1='10' y1='21' x2='22' y2='21' stroke='%23f5b942' stroke-width='1.4'/%3E%3C/svg%3E">
+<script>document.documentElement.className = "js";</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a1d24'/%3E%3Crect x='6.5' y='5.5' width='19' height='21' fill='none' stroke='%23f4f1ea' stroke-width='1.4'/%3E%3Cline x1='10' y1='21' x2='22' y2='21' stroke='%23d4553a' stroke-width='1.6'/%3E%3C/svg%3E">
 <title>ip-search-mcp: patent and trademark research for agents</title>
 <meta name="description" content="An MCP server and CLI for patent and trademark research, 37 CFR 1.84 drawing validation, and review-only drafting. Provenance on every hit. Nothing is filed.">
 <meta property="og:title" content="ip-search-mcp">
@@ -11,17 +12,19 @@
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500&family=Atkinson+Hyperlegible+Mono:wght@400;500&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
+<div class="guides" aria-hidden="true"></div>
 
 <header class="nav">
   <div class="container nav__inner">
     <a class="wordmark" href="./">ip-search-mcp</a>
     <nav aria-label="Primary">
       <a href="#sheet">Sheet</a>
+      <a href="#clock">Clock</a>
       <a href="#install">Install</a>
       <a href="https://github.com/bytesbybrandon/ip-search-mcp">Source</a>
     </nav>
@@ -34,232 +37,296 @@
     <div class="container hero__grid">
       <div class="hero__text">
         <h1 id="hero-title">Patent research your agent can cite.</h1>
+        <p class="lead">Every hit arrives with its provider, route and retrieval time.</p>
+        <div class="picker" role="group" aria-label="Install for">
+          <span class="label">Install for</span>
+          <button class="pick" type="button" data-client-pick="claude" aria-pressed="true">Claude Code</button>
+          <button class="pick" type="button" data-client-pick="cursor" aria-pressed="false">Cursor</button>
+          <button class="pick" type="button" data-client-pick="desktop" aria-pressed="false">Claude Desktop</button>
+        </div>
         <div class="actions">
-          <button class="btn btn--primary" type="button" data-copy-text="npx -y ip-search-mcp">Copy the install command</button>
-          <a class="btn" href="#sheet">Watch a sheet pass</a>
+          <button class="btn btn--primary" type="button" data-copy-client>Copy the install command</button>
+          <a class="btn" href="#sheet">See a sheet corrected</a>
         </div>
-        <p class="note">Nineteen tools. Every hit carries its provider and retrieval time.</p>
       </div>
 
-      <div class="console" data-console>
-        <div class="console__bar" role="tablist" aria-label="Recorded sessions">
-          <button class="console__tab" role="tab" aria-selected="true" aria-controls="panel-status" id="tab-status" data-tab="status">status</button>
-          <button class="console__tab" role="tab" aria-selected="false" aria-controls="panel-search" id="tab-search" data-tab="search" tabindex="-1">search</button>
-          <button class="console__tab" role="tab" aria-selected="false" aria-controls="panel-drawings" id="tab-drawings" data-tab="drawings" tabindex="-1">drawings</button>
-          <span class="console__stamp measured">2026-11-10</span>
+      <div class="cited" data-cited>
+        <div class="cited__bar">
+          <div class="cited__tabs" role="tablist" aria-label="Recorded sessions">
+            <button class="cited__tab" type="button" role="tab" aria-selected="true" aria-controls="panel-status" id="tab-status" data-tab="status">Status</button>
+            <button class="cited__tab" type="button" role="tab" aria-selected="false" aria-controls="panel-search" id="tab-search" data-tab="search" tabindex="-1">Search</button>
+            <button class="cited__tab" type="button" role="tab" aria-selected="false" aria-controls="panel-drawings" id="tab-drawings" data-tab="drawings" tabindex="-1">Drawing</button>
+          </div>
+          <span class="cited__stamp measured">Live run, 2026-11-10</span>
         </div>
 
-        <div class="console__panel" role="tabpanel" id="panel-status" aria-labelledby="tab-status" data-panel="status">
-          <p class="console__cmd"><span class="label">Command</span><code>ip-axi trademarks get 87454105</code></p>
-          <pre class="code" tabindex="0"><code>mark: DOCKER
-status: ACTIVE
-owner: Docker, Inc.
-serial: 87454105
-registration: 6096739
-filed: 2017-05-17
-registered: 2020-07-07
-classes: 9
-next[1]:
-  ip-axi trademarks docs 87454105</code></pre>
-          <dl class="console__meta">
-            <div><dt>provider</dt><dd class="measured">tsdr</dd></div>
-            <div><dt>route</dt><dd class="measured">GET /ts/cd/casestatus/sn87454105/info</dd></div>
-            <div><dt>retrieved</dt><dd class="measured">2026-11-10</dd></div>
-          </dl>
+        <div class="cited__panels">
+        <div class="cited__panel" role="tabpanel" id="panel-status" aria-labelledby="tab-status" data-panel="status">
+          <div class="answer">
+            <p class="answer__q">Is DOCKER still a live trademark?</p>
+            <p class="answer__a">Yes. DOCKER is <span class="cite" tabindex="0" data-ref="10">active<sup>10</sup></span>, owned by <span class="cite" tabindex="0" data-ref="12">Docker, Inc.<sup>12</sup></span> and registered on <span class="cite" tabindex="0" data-ref="14">7 July 2020<sup>14</sup></span>. The record came from <span class="cite" tabindex="0" data-ref="16">TSDR<sup>16</sup></span>.</p>
+          </div>
+          <div class="record plate">
+            <p class="record__cmd"><span class="label">Command</span><code>ip-axi trademarks get 87454105</code></p>
+            <div class="record__out" tabindex="0" role="group" aria-label="Recorded output">
+              <code class="ln">mark: DOCKER</code>
+              <code class="ln ln--lead" data-ref="10"><span>status: ACTIVE</span></code>
+              <code class="ln ln--lead" data-ref="12"><span>owner: Docker, Inc.</span></code>
+              <code class="ln">serial: 87454105</code>
+              <code class="ln">registration: 6096739</code>
+              <code class="ln">filed: 2017-05-17</code>
+              <code class="ln ln--lead" data-ref="14"><span>registered: 2020-07-07</span></code>
+              <code class="ln">classes: 9</code>
+              <code class="ln">next[1]:</code>
+              <code class="ln">  ip-axi trademarks docs 87454105</code>
+              <code class="ln ln--lead ln--first" data-ref="16"><span>provider: tsdr</span></code>
+              <code class="ln" data-ref="16"><span>route: GET /ts/cd/casestatus/sn87454105/info</span></code>
+              <code class="ln" data-ref="16"><span>retrieved: 2026-11-10</span></code>
+            </div>
+          </div>
         </div>
 
-        <div class="console__panel" role="tabpanel" id="panel-search" aria-labelledby="tab-search" data-panel="search" hidden>
-          <p class="console__cmd"><span class="label">Command</span><code>ip-axi patents search "lens" --limit 1</code></p>
-          <pre class="code" tabindex="0"><code>results[1 of 47461 total]{number,date,assignee,title}:
-  96050163,2026-09-02,,IMAGING LENS ASSEMBLY
-next[3]:
-  ip-axi patents get 96050163
-  ip-axi patents docs 96050163
-  ip-axi status
-help[1]:
-  ODP sort and filter field names are not verified without the signed-in documentation.</code></pre>
-          <dl class="console__meta">
-            <div><dt>provider</dt><dd class="measured">odp</dd></div>
-            <div><dt>route</dt><dd class="measured">POST /api/v1/patent/applications/search</dd></div>
-            <div><dt>retrieved</dt><dd class="measured">2026-11-10</dd></div>
-          </dl>
+        <div class="cited__panel" role="tabpanel" id="panel-search" aria-labelledby="tab-search" data-panel="search" hidden>
+          <div class="answer">
+            <p class="answer__q">What does the patent office have on lenses?</p>
+            <p class="answer__a"><span class="cite" tabindex="0" data-ref="14">ODP<sup>14</sup></span> lists <span class="cite" tabindex="0" data-ref="10">47,461<sup>10</sup></span> results for &ldquo;lens&rdquo;. The first is <span class="cite" tabindex="0" data-ref="12">96050163, imaging lens assembly, dated <span class="nb">2026-09-02</span><sup>12</sup></span>, with no assignee listed. A count says nothing about novelty.</p>
+          </div>
+          <div class="record plate">
+            <p class="record__cmd"><span class="label">Command</span><code>ip-axi patents search "lens" --limit 1</code></p>
+            <div class="record__out" tabindex="0" role="group" aria-label="Recorded output">
+              <code class="ln ln--lead" data-ref="10"><span>results[1 of 47461 total]{number,date,assignee,title}:</span></code>
+              <code class="ln ln--lead" data-ref="12"><span>  96050163,2026-09-02,,IMAGING LENS ASSEMBLY</span></code>
+              <code class="ln">next[3]:</code>
+              <code class="ln">  ip-axi patents get 96050163</code>
+              <code class="ln">  ip-axi patents docs 96050163</code>
+              <code class="ln">  ip-axi status</code>
+              <code class="ln">help[1]:</code>
+              <code class="ln">  ODP sort and filter field names are not verified without the signed-in documentation.</code>
+              <code class="ln ln--lead ln--first" data-ref="14"><span>provider: odp</span></code>
+              <code class="ln" data-ref="14"><span>route: POST /api/v1/patent/applications/search</span></code>
+              <code class="ln" data-ref="14"><span>retrieved: 2026-11-10</span></code>
+            </div>
+          </div>
         </div>
 
-        <div class="console__panel" role="tabpanel" id="panel-drawings" aria-labelledby="tab-drawings" data-panel="drawings" hidden>
-          <p class="console__cmd"><span class="label">Command</span><code>ip-axi drawings validate fig-1.svg</code></p>
-          <pre class="code" tabindex="0"><code>ok: true
-errors: 0
-warnings: 2
-minTextMm: 3.6
-refs: 10,12,14,16
-findings[2]{severity,rule,citation,message}:
-  warning,text.place,"37 CFR 1.84(p)(3), (p)(5)",reference character 14 appears in the drawing but not in the description</code></pre>
-          <dl class="console__meta">
-            <div><dt>source</dt><dd class="measured">37 CFR 1.84</dd></div>
-            <div><dt>rules</dt><dd class="measured">17</dd></div>
-            <div><dt>validator</dt><dd class="measured">local</dd></div>
-          </dl>
+        <div class="cited__panel" role="tabpanel" id="panel-drawings" aria-labelledby="tab-drawings" data-panel="drawings" hidden>
+          <div class="answer">
+            <p class="answer__q">Does fig-1.svg pass the drawing rules?</p>
+            <p class="answer__a">It passes with <span class="cite" tabindex="0" data-ref="10">0 errors<sup>10</sup></span> and <span class="cite" tabindex="0" data-ref="12">2 warnings<sup>12</sup></span>. <span class="cite" tabindex="0" data-ref="14">Text is at least 3.6 mm<sup>14</sup></span>, over the 3.2 mm floor. One warning: <span class="cite" tabindex="0" data-ref="16">reference character 14 is drawn but never described<sup>16</sup></span>.</p>
+          </div>
+          <div class="record plate">
+            <p class="record__cmd"><span class="label">Command</span><code>ip-axi drawings validate fig-1.svg</code></p>
+            <div class="record__out" tabindex="0" role="group" aria-label="Recorded output">
+              <code class="ln">ok: true</code>
+              <code class="ln ln--lead" data-ref="10"><span>errors: 0</span></code>
+              <code class="ln ln--lead" data-ref="12"><span>warnings: 2</span></code>
+              <code class="ln ln--lead" data-ref="14"><span>minTextMm: 3.6</span></code>
+              <code class="ln">refs: 10,12,14,16</code>
+              <code class="ln">findings[2]{severity,rule,citation,message}:</code>
+              <code class="ln ln--lead" data-ref="16"><span>  warning,text.place,"37 CFR 1.84(p)(3), (p)(5)",reference character 14 appears in the drawing but not in the description</span></code>
+              <code class="ln ln--first">source: 37 CFR 1.84</code>
+              <code class="ln">rules: 17</code>
+              <code class="ln">validator: local</code>
+            </div>
+          </div>
         </div>
-
-        <p class="console__foot note">Recorded from live runs. Keys stay local.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="section demo" id="sheet" aria-labelledby="sheet-title">
-    <div class="container demo__grid">
-      <div class="demo__sticky">
-        <p class="label">FIG. 1, as the validator sees it</p>
-        <svg class="sheet fix-margin fix-weight fix-refs" viewBox="0 0 210 297" role="img" aria-labelledby="sheet-desc">
-          <desc id="sheet-desc">A schematic drawing sheet. Three defects, a margin breach, a hairline stroke, and undersized reference characters, are corrected as the sections beside it are read.</desc>
-          <rect class="sheet__paper" x="0" y="0" width="210" height="297" rx="2"/>
-          <g class="sheet__guides">
-            <rect x="25" y="25" width="170" height="262"/>
-            <line x1="25" y1="12" x2="25" y2="20"/>
-            <line x1="12" y1="25" x2="20" y2="25"/>
-            <text x="27" y="16">25 mm</text>
-          </g>
-          <g class="sheet__content">
-            <rect class="housing" x="8" y="92" width="128" height="86" rx="1"/>
-            <rect class="chamber" x="24" y="108" width="82" height="54"/>
-            <circle class="sensor" cx="65" cy="135" r="17"/>
-            <line class="seat" x1="82" y1="160" x2="140" y2="160"/>
-            <line class="leader" x1="82" y1="135" x2="150" y2="135"/>
-            <path class="leader" d="M150 135 h14"/>
-            <text class="ref" x="10" y="88">10</text>
-            <text class="ref" x="120" y="88">12</text>
-            <text class="ref" x="168" y="130">14</text>
-            <text class="ref" x="168" y="156">16</text>
-          </g>
-          <g class="sheet__caption">
-            <text x="25" y="282">Sheet 1 of 1</text>
-            <text x="185" y="282" text-anchor="end">FIG. 1</text>
-          </g>
-        </svg>
-        <p class="demo__status measured" data-demo-status>3 defects corrected</p>
-      </div>
-
-      <div class="demo__steps">
-        <h2 id="sheet-title">Three rules decide whether a drawing is readable.</h2>
-        <ol class="steps">
-          <li class="step" data-fix="fix-margin">
-            <p class="step__n measured">01</p>
-            <h3>Margin</h3>
-            <p>Top and left are 25 mm, right 15 mm, bottom 10 mm. The sight is what remains.</p>
-            <p class="measured step__cite">37 CFR 1.84(g)</p>
-          </li>
-          <li class="step" data-fix="fix-weight">
-            <p class="step__n measured">02</p>
-            <h3>Line weight</h3>
-            <p>A hairline dies in reproduction. 0.18 mm is the floor.</p>
-            <p class="measured step__cite">37 CFR 1.84(l)</p>
-          </li>
-          <li class="step" data-fix="fix-refs">
-            <p class="step__n measured">03</p>
-            <h3>Reference characters</h3>
-            <p>Every character is at least 3.2 mm high and appears in the description.</p>
-            <p class="measured step__cite">37 CFR 1.84(p)(3)</p>
-          </li>
-        </ol>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="section ledger" aria-labelledby="ledger-title">
+  <section class="plate pass" id="sheet" data-pass aria-labelledby="sheet-title">
+    <div class="pass__stage">
+      <div class="container pass__grid">
+        <div class="pass__copy">
+          <h2 id="sheet-title">Three rules decide whether a drawing is readable.</h2>
+          <ol class="rules" data-rules>
+            <li class="rule" data-rule="1" data-state="fixed">
+              <span class="rule__cite measured">37 CFR 1.84(g)</span>
+              <span class="rule__state">corrected</span>
+              <h3>Margin</h3>
+              <p>Top and left 25 mm, right 15 mm, bottom 10 mm.</p>
+            </li>
+            <li class="rule" data-rule="2" data-state="fixed">
+              <span class="rule__cite measured">37 CFR 1.84(l)</span>
+              <span class="rule__state">corrected</span>
+              <h3>Line weight</h3>
+              <p>A hairline dies in reproduction. 0.18 mm is the floor.</p>
+            </li>
+            <li class="rule" data-rule="3" data-state="fixed">
+              <span class="rule__cite measured">37 CFR 1.84(p)(3)</span>
+              <span class="rule__state">corrected</span>
+              <h3>Reference characters</h3>
+              <p>Every character is at least 3.2 mm high.</p>
+            </li>
+          </ol>
+          <button class="btn pass__replay" type="button" data-pass-replay hidden>Show the defects</button>
+        </div>
+
+        <figure class="pass__sheet">
+          <svg class="sheet" viewBox="0 0 210 297" role="img" aria-labelledby="sheet-desc">
+            <desc id="sheet-desc">A schematic drawing sheet. Three defects, a margin breach, a hairline stroke and undersized reference characters, are marked in red and corrected one after another as the page scrolls.</desc>
+            <rect class="sheet__paper" x="0" y="0" width="210" height="297"/>
+            <g class="sheet__zones">
+              <rect x="0" y="0" width="210" height="25"/>
+              <rect x="0" y="25" width="25" height="262"/>
+              <rect x="195" y="25" width="15" height="262"/>
+              <rect x="0" y="287" width="210" height="10"/>
+              <text x="27" y="18">25 mm</text>
+              <text x="2.5" y="40">25 mm</text>
+              <text x="196.5" y="40">15 mm</text>
+              <text x="27" y="294">10 mm</text>
+            </g>
+            <g class="sheet__content">
+              <rect class="housing" x="25" y="92" width="128" height="86" rx="1"/>
+              <rect class="chamber" x="41" y="108" width="82" height="54"/>
+              <circle class="sensor" cx="82" cy="135" r="17"/>
+              <line class="seat" x1="99" y1="160" x2="157" y2="160"/>
+              <line class="leader" x1="99" y1="135" x2="167" y2="135"/>
+              <path class="leader" d="M167 135 h14"/>
+              <text class="ref" x="27" y="88">10</text>
+              <text class="ref" x="137" y="88">12</text>
+              <text class="ref" x="185" y="131">14</text>
+              <text class="ref" x="185" y="157">16</text>
+              <text class="fig" x="89" y="196" text-anchor="middle">FIG. 1</text>
+              <rect class="pen pen--1" x="21" y="86" width="136" height="96" rx="2"/>
+              <circle class="pen pen--2" cx="82" cy="135" r="22"/>
+              <rect class="pen pen--3" x="182" y="122" width="12" height="40" rx="2"/>
+            </g>
+            <g class="sheet__block" transform="translate(25 214)">
+              <line class="block__rule" x1="0" y1="0" x2="170" y2="0"/>
+              <g transform="translate(0 9)">
+                <text class="block__cite" x="0" y="0">1.84(g)</text>
+                <text class="block__name" x="34" y="0">Left margin</text>
+                <text class="val val--bad val--1" x="132" y="0" text-anchor="end">8 mm</text>
+                <text class="val val--ok val--1" x="132" y="0" text-anchor="end">25 mm</text>
+                <text class="block__min" x="170" y="0" text-anchor="end">min 25 mm</text>
+              </g>
+              <g transform="translate(0 20)">
+                <text class="block__cite" x="0" y="0">1.84(l)</text>
+                <text class="block__name" x="34" y="0">Line weight</text>
+                <text class="val val--bad val--2" x="132" y="0" text-anchor="end">0.10 mm</text>
+                <text class="val val--ok val--2" x="132" y="0" text-anchor="end">0.50 mm</text>
+                <text class="block__min" x="170" y="0" text-anchor="end">min 0.18 mm</text>
+              </g>
+              <g transform="translate(0 31)">
+                <text class="block__cite" x="0" y="0">1.84(p)(3)</text>
+                <text class="block__name" x="34" y="0">Text height</text>
+                <text class="val val--bad val--3" x="132" y="0" text-anchor="end">2.0 mm</text>
+                <text class="val val--ok val--3" x="132" y="0" text-anchor="end">5.0 mm</text>
+                <text class="block__min" x="170" y="0" text-anchor="end">min 3.2 mm</text>
+              </g>
+            </g>
+          </svg>
+          <figcaption class="pass__status measured" data-pass-status aria-live="polite">ok: true, errors: 0</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section clock" id="clock" aria-labelledby="clock-title">
+    <div class="container clock__grid">
+      <div class="clock__intro">
+        <h2 id="clock-title">Your first disclosure starts a one-year clock.</h2>
+        <p class="lead">Enter the day it first went public.</p>
+        <form class="clock__form" data-clock-form>
+          <label class="field"><span class="label">First public disclosure</span><input type="date" data-clock-date required></label>
+          <label class="field"><span class="label">Planned filing date, optional</span><input type="date" data-clock-plan></label>
+        </form>
+        <p class="note">The same arithmetic as disclosure_review. Not legal advice.</p>
+      </div>
+
+      <div class="clock__out" data-clock-out aria-live="polite" hidden>
+        <p class="clock__days"><span class="clock__n" data-clock-n>0</span><span class="clock__unit" data-clock-unit>days left in the US grace period</span></p>
+        <p class="clock__line" data-clock-line></p>
+        <div class="ruler" data-ruler style="--f: 0">
+          <div class="ruler__track">
+            <div class="ruler__ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="ruler__fill"></div>
+            <div class="ruler__marker"><span>today</span></div>
+          </div>
+          <div class="ruler__ends measured"><span data-clock-start></span><span data-clock-end></span></div>
+        </div>
+        <div class="abroad">
+          <p class="abroad__head">No grace period abroad. Disclosure already counts against you in:</p>
+          <ul class="chips measured" aria-label="Absolute-novelty jurisdictions"><li>EP</li><li>CN</li><li>JP</li><li>KR</li><li>DE</li><li>FR</li><li>GB</li><li>IN</li><li>BR</li><li>AU</li><li>CA</li></ul>
+        </div>
+        <div class="actions">
+          <button class="btn btn--primary" type="button" data-copy-fn="clock">Copy as an agent prompt</button>
+          <a class="btn" href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/TOOLS.md">All 19 tools</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section index" aria-labelledby="index-title">
     <div class="container">
-      <div class="section__head">
-        <h2 id="ledger-title">The record.</h2>
+      <h2 id="index-title">Every answer names its source.</h2>
+      <ol class="sources">
+        <li class="source">
+          <p class="source__rule measured">1.84</p>
+          <div class="source__what"><h3>Drawings</h3><p>Seventeen checks, each with its paragraph.</p></div>
+          <p class="source__sample measured">errors: 0<br>warnings: 2<br>minTextMm: 3.6</p>
+        </li>
+        <li class="source">
+          <p class="source__rule measured">112</p>
+          <div class="source__what"><h3>Claims</h3><p>Dependency graphs, antecedent basis.</p></div>
+          <p class="source__sample measured">claims: 1 independent<br>findings: 0</p>
+        </li>
+        <li class="source">
+          <p class="source__rule measured">102(b)(1)</p>
+          <div class="source__what"><h3>Disclosure</h3><p>The clock starts at the earliest disclosure.</p></div>
+          <p class="source__sample"><a href="#clock">Run it above</a></p>
+        </li>
+      </ol>
+
+      <div class="stats">
+        <div class="stats__lead">
+          <p class="stats__big measured">7,330</p>
+          <p class="stats__unit">trademark records indexed in 60 seconds.</p>
+        </div>
+        <dl class="stats__list">
+          <div><dt class="label">MCP tools</dt><dd class="measured">19</dd></div>
+          <div><dt class="label">drawing rules</dt><dd class="measured">17</dd></div>
+          <div><dt class="label">tests</dt><dd class="measured">37</dd></div>
+        </dl>
       </div>
-
-      <details class="record">
-        <summary>
-          <span class="record__name">Drawings</span>
-          <span class="record__rule measured">1.84</span>
-          <span class="record__what">Sheet, ink, line, text, views.</span>
-        </summary>
-        <div class="record__body">
-          <p>Seventeen checks, each with the paragraph that produced it.</p>
-          <p class="measured">errors: 0<br>warnings: 2<br>minTextMm: 3.6</p>
-        </div>
-      </details>
-
-      <details class="record">
-        <summary>
-          <span class="record__name">Claims</span>
-          <span class="record__rule measured">112</span>
-          <span class="record__what">Numbering, dependency, antecedent basis.</span>
-        </summary>
-        <div class="record__body">
-          <p>Dependency graphs and transitive antecedent basis.</p>
-          <p class="measured">claims: 1 independent<br>findings: 0</p>
-        </div>
-      </details>
-
-      <details class="record">
-        <summary>
-          <span class="record__name">Disclosure</span>
-          <span class="record__rule measured">102(b)(1)</span>
-          <span class="record__what">Grace clock, absolute-novelty flags.</span>
-        </summary>
-        <div class="record__body">
-          <p>The clock starts at the earliest recorded disclosure.</p>
-          <p class="measured">deadline: 2027-09-01<br>days: 294</p>
-        </div>
-      </details>
     </div>
   </section>
 
-  <section class="section figures" aria-labelledby="figures-title">
-    <div class="container figures__grid">
-      <div class="figures__lead">
-        <h2 id="figures-title" class="visually-hidden">Measured</h2>
-        <p class="figure__big measured">7,330</p>
-        <p class="figure__unit">records, indexed in <span class="measured">60 s</span>.</p>
+  <section class="plate close" id="install" aria-labelledby="close-title">
+    <div class="container close__grid">
+      <div class="close__head">
+        <h2 id="close-title">Nothing is filed.</h2>
+        <p class="lead">Research and drafts, for a licensed practitioner to review.</p>
       </div>
-      <dl class="figures__list">
-        <div><dt class="label">MCP tools</dt><dd class="measured">19</dd></div>
-        <div><dt class="label">drawing rules</dt><dd class="measured">17</dd></div>
-        <div><dt class="label">tests</dt><dd class="measured">37</dd></div>
-      </dl>
-    </div>
-  </section>
-
-  <section class="section install" id="install" aria-labelledby="install-title">
-    <div class="container install__grid">
-      <div>
-        <h2 id="install-title">Pick your client.</h2>
-        <p class="lead">Keys optional.</p>
-        <div class="switcher" role="group" aria-label="Client">
-          <button class="switch" type="button" data-client="claude" aria-pressed="true">Claude Code</button>
-          <button class="switch" type="button" data-client="cursor" aria-pressed="false">Cursor</button>
-          <button class="switch" type="button" data-client="desktop" aria-pressed="false">Claude Desktop</button>
+      <div class="close__install">
+        <div class="picker picker--wide" role="group" aria-label="Client">
+          <button class="pick" type="button" data-client-pick="claude" aria-pressed="true">Claude Code</button>
+          <button class="pick" type="button" data-client-pick="cursor" aria-pressed="false">Cursor</button>
+          <button class="pick" type="button" data-client-pick="desktop" aria-pressed="false">Claude Desktop</button>
         </div>
-        <label class="keys">
-          <input type="checkbox" data-keys>
-          <span>Include key placeholders</span>
-        </label>
-      </div>
-      <div class="install__out">
-        <p class="label" data-client-path>terminal</p>
-        <pre class="code" id="client-config"><code data-config>claude mcp add ip-search-mcp -- npx -y ip-search-mcp
+        <div class="install__out">
+          <p class="label" data-client-path>terminal</p>
+          <pre class="code" id="client-config"><code data-config>claude mcp add ip-search-mcp -- npx -y ip-search-mcp
 claude mcp list</code></pre>
-        <div class="actions">
-          <button class="btn btn--primary" type="button" data-copy="#client-config">Copy</button>
-          <a class="btn" href="https://github.com/bytesbybrandon/ip-search-mcp#readme">Full setup</a>
+          <div class="install__row">
+            <label class="keys">
+              <input type="checkbox" data-keys>
+              <span>Include key placeholders</span>
+            </label>
+            <div class="actions">
+              <button class="btn btn--primary" type="button" data-copy="#client-config">Copy</button>
+              <a class="btn" href="https://github.com/bytesbybrandon/ip-search-mcp#readme">Full setup</a>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="section handoff" aria-labelledby="handoff-title">
-    <div class="container handoff__grid">
-      <div>
-        <h2 id="handoff-title">Ask for evidence.</h2>
-      </div>
-      <div class="handoff__card">
-        <pre class="code" id="agent-prompt"><code>Search patents for a self-calibrating optical sensor. List three references with provider and date. No novelty claims.</code></pre>
-        <div class="actions">
-          <button class="btn btn--primary" type="button" data-copy="#agent-prompt">Copy the prompt</button>
+        <div class="install__out">
+          <p class="label">Then ask</p>
+          <pre class="code" id="agent-prompt"><code>Search patents for a self-calibrating optical sensor. List three references with provider and date. No novelty claims.</code></pre>
+          <div class="actions">
+            <button class="btn" type="button" data-copy="#agent-prompt">Copy the prompt</button>
+          </div>
         </div>
       </div>
     </div>
@@ -267,7 +334,7 @@ claude mcp list</code></pre>
 
 </main>
 
-<footer class="footer">
+<footer class="footer plate">
   <div class="container footer__grid">
     <p class="wordmark">ip-search-mcp</p>
     <nav aria-label="Footer">
@@ -277,125 +344,298 @@ claude mcp list</code></pre>
       <a href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/LIMITS.md">Limits</a>
     </nav>
     <div class="colophon">
-      <p class="note">Console theme. Rules encoded from eCFR title 37, retrieved 2026-11-10. MIT licensed.</p>
+      <p class="note">Rules encoded from eCFR title 37, retrieved 2026-11-10. Keys stay local. MIT licensed.</p>
       <p class="note">Research and drafts for review by a licensed practitioner. Not legal advice. Nothing is filed.</p>
     </div>
   </div>
 </footer>
 
+<div class="dock" data-dock aria-hidden="true" inert>
+  <label class="dock__pick"><span class="visually-hidden">Client</span>
+    <select data-client-select>
+      <option value="claude">Claude Code</option>
+      <option value="cursor">Cursor</option>
+      <option value="desktop">Claude Desktop</option>
+    </select>
+  </label>
+  <button class="btn btn--primary" type="button" data-copy-client>Copy install</button>
+</div>
+
 <script>
 (() => {
-  const consoleEl = document.querySelector("[data-console]");
-  if (consoleEl) {
-    const tabs = [...consoleEl.querySelectorAll("[data-tab]")];
-    const panels = [...consoleEl.querySelectorAll("[data-panel]")];
-    const select = (name) => {
-      tabs.forEach((tab) => {
-        const active = tab.dataset.tab === name;
-        tab.setAttribute("aria-selected", String(active));
-        tab.tabIndex = active ? 0 : -1;
-      });
-      panels.forEach((panel) => {
-        panel.hidden = panel.dataset.panel !== name;
-      });
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const clamp = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
+  const ease = (t) => t * t * (3 - 2 * t);
+
+  /* ---------- clients: one state, three pickers ---------- */
+  const jsonPlain = '{\n  "mcpServers": {\n    "ip-search-mcp": {\n      "command": "npx",\n      "args": ["-y", "ip-search-mcp"]\n    }\n  }\n}';
+  const jsonKeys = '{\n  "mcpServers": {\n    "ip-search-mcp": {\n      "command": "npx",\n      "args": ["-y", "ip-search-mcp"],\n      "env": {\n        "USPTO_ODP_API_KEY": "...",\n        "USPTO_TSDR_API_KEY": "..."\n      }\n    }\n  }\n}';
+  const clients = {
+    claude: {
+      label: "Claude Code",
+      path: "terminal",
+      plain: "claude mcp add ip-search-mcp -- npx -y ip-search-mcp\nclaude mcp list",
+      keys: "claude mcp add ip-search-mcp -e USPTO_ODP_API_KEY=... -e USPTO_TSDR_API_KEY=... -- npx -y ip-search-mcp\nclaude mcp list",
+    },
+    cursor: { label: "Cursor", path: "~/.cursor/mcp.json", plain: jsonPlain, keys: jsonKeys },
+    desktop: { label: "Claude Desktop", path: "claude_desktop_config.json", plain: jsonPlain, keys: jsonKeys },
+  };
+  let current = "claude";
+  const config = document.querySelector("[data-config]");
+  const pathEl = document.querySelector("[data-client-path]");
+  const keysToggle = document.querySelector("[data-keys]");
+  const select = document.querySelector("[data-client-select]");
+  const renderClient = () => {
+    const entry = clients[current];
+    if (config) config.textContent = keysToggle && keysToggle.checked ? entry.keys : entry.plain;
+    if (pathEl) pathEl.textContent = entry.path;
+    document.querySelectorAll("[data-client-pick]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.clientPick === current)));
+    if (select) select.value = current;
+  };
+  document.querySelectorAll("[data-client-pick]").forEach((b) => b.addEventListener("click", () => { current = b.dataset.clientPick; renderClient(); }));
+  if (select) select.addEventListener("change", () => { current = select.value; renderClient(); });
+  if (keysToggle) keysToggle.addEventListener("change", renderClient);
+  renderClient();
+
+  /* ---------- copy ---------- */
+  const labels = new WeakMap();
+  const prompts = {
+    clock: () => window.__clockPrompt || "",
+  };
+  document.querySelectorAll("[data-copy], [data-copy-client], [data-copy-fn]").forEach((button) => {
+    labels.set(button, button.textContent);
+    button.addEventListener("click", async () => {
+      let text = "";
+      if (button.dataset.copyClient !== undefined) text = clients[current].plain;
+      else if (button.dataset.copyFn) text = prompts[button.dataset.copyFn]();
+      else { const target = document.querySelector(button.dataset.copy); text = target ? target.innerText : ""; }
+      try { await navigator.clipboard.writeText(text); button.textContent = "Copied"; }
+      catch { button.textContent = "Select and copy"; }
+      setTimeout(() => { button.textContent = labels.get(button); }, 2400);
+    });
+  });
+
+  /* ---------- hero: answer and record, joined by reference characters ---------- */
+  const cited = document.querySelector("[data-cited]");
+  if (cited) {
+    const tabs = [...cited.querySelectorAll("[data-tab]")];
+    const panels = [...cited.querySelectorAll("[data-panel]")];
+    let timer = 0;
+    const activate = (panel, ref) => {
+      panel.querySelectorAll("[data-ref]").forEach((el) => el.classList.toggle("is-active", ref !== null && el.dataset.ref === ref));
+    };
+    const stopTour = () => { clearTimeout(timer); timer = 0; };
+    const tour = (panel) => {
+      stopTour();
+      if (reduced) return;
+      const refs = [...new Set([...panel.querySelectorAll(".cite")].map((c) => c.dataset.ref))].sort();
+      let i = 0;
+      const step = () => {
+        if (i < refs.length) { activate(panel, refs[i]); i += 1; timer = setTimeout(step, 1500); }
+        else { activate(panel, null); timer = 0; }
+      };
+      timer = setTimeout(step, 1100);
+    };
+    panels.forEach((panel) => {
+      panel.addEventListener("pointerover", (e) => { const t = e.target.closest("[data-ref]"); if (t) { stopTour(); activate(panel, t.dataset.ref); } });
+      panel.addEventListener("pointerleave", () => activate(panel, null));
+      panel.addEventListener("focusin", (e) => { const t = e.target.closest("[data-ref]"); if (t) { stopTour(); activate(panel, t.dataset.ref); } });
+      panel.addEventListener("focusout", () => activate(panel, null));
+      panel.addEventListener("click", (e) => { const t = e.target.closest(".cite"); if (t) { stopTour(); activate(panel, t.dataset.ref); } });
+    });
+    const open = (name) => {
+      tabs.forEach((tab) => { const on = tab.dataset.tab === name; tab.setAttribute("aria-selected", String(on)); tab.tabIndex = on ? 0 : -1; });
+      panels.forEach((panel) => { panel.hidden = panel.dataset.panel !== name; if (panel.hidden) activate(panel, null); });
+      tour(panels.find((p) => p.dataset.panel === name));
     };
     tabs.forEach((tab) => {
-      tab.addEventListener("click", () => select(tab.dataset.tab));
+      tab.addEventListener("click", () => open(tab.dataset.tab));
       tab.addEventListener("keydown", (event) => {
         if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
-        const index = tabs.indexOf(tab);
-        const next = tabs[(index + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
-        next.focus();
-        select(next.dataset.tab);
+        const next = tabs[(tabs.indexOf(tab) + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+        next.focus(); open(next.dataset.tab);
       });
     });
+    const lock = () => {
+      const box = cited.querySelector(".cited__panels");
+      box.style.minHeight = "";
+      let tallest = 0;
+      panels.forEach((panel) => {
+        const was = panel.hidden; panel.hidden = false;
+        tallest = Math.max(tallest, panel.getBoundingClientRect().height);
+        panel.hidden = was;
+      });
+      box.style.minHeight = tallest + "px";
+    };
+    lock();
+    window.addEventListener("resize", lock, { passive: true });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(lock);
+    tour(panels[0]);
   }
 
-  const demo = document.querySelector(".sheet");
-  if (demo) {
-    const fixes = ["fix-margin", "fix-weight", "fix-refs"];
-    const status = document.querySelector("[data-demo-status]");
-    const section = document.querySelector(".demo");
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    fixes.forEach((fix) => demo.classList.add(fix));
-    if (status) status.textContent = "3 defects corrected";
-    if (!still && section) {
-      fixes.forEach((fix) => demo.classList.remove(fix));
-      if (status) status.textContent = "3 defects open";
-      let frame = 0;
-      const update = () => {
-        frame = 0;
-        const rect = section.getBoundingClientRect();
-        const travel = Math.max(1, rect.height - window.innerHeight);
-        const progress = Math.min(1, Math.max(0, -rect.top / travel));
-        const applied = progress < 0.25 ? 0 : progress < 0.5 ? 1 : progress < 0.75 ? 2 : 3;
-        fixes.forEach((fix, index) => demo.classList.toggle(fix, index < applied));
-        if (status) status.textContent = applied === 3 ? "3 defects corrected" : (3 - applied) + (applied === 2 ? " defect open" : " defects open");
+  /* ---------- the pinned pass ---------- */
+  const pass = document.querySelector("[data-pass]");
+  if (pass) {
+    const stage = pass.querySelector(".pass__stage");
+    const rules = [...pass.querySelectorAll(".rule")];
+    const statusEl = pass.querySelector("[data-pass-status]");
+    const replay = pass.querySelector("[data-pass-replay]");
+    const ruleList = pass.querySelector("[data-rules]");
+    const wide = window.matchMedia("(min-width: 61rem)");
+    let ts = [1, 1, 1];
+    const paint = (t) => {
+      ts = t;
+      t.forEach((v, i) => stage.style.setProperty("--t" + (i + 1), v.toFixed(4)));
+      const done = t.filter((v) => v >= 1).length;
+      const firstOpen = t.findIndex((v) => v < 1);
+      rules.forEach((rule, i) => {
+        const fixed = t[i] >= 1;
+        rule.dataset.state = fixed ? "fixed" : "open";
+        rule.classList.toggle("is-active", i === firstOpen);
+        rule.querySelector(".rule__state").textContent = fixed ? "corrected" : "open";
+      });
+      ruleList.style.setProperty("--p", ((t[0] + t[1] + t[2]) / 3).toFixed(4));
+      const errors = 3 - done;
+      statusEl.textContent = errors === 0 ? "ok: true, errors: 0" : "ok: false, errors: " + errors;
+    };
+    const scrub = () => {
+      const rect = pass.getBoundingClientRect();
+      const travel = Math.max(1, rect.height - window.innerHeight);
+      const p = clamp(-rect.top / travel);
+      const phase = (start, end) => ease(clamp((p - start) / (end - start)));
+      paint([phase(0.08, 0.34), phase(0.36, 0.62), phase(0.64, 0.9)]);
+    };
+    let frame = 0;
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(() => { frame = 0; scrub(); }); };
+    let raf = 0;
+    const tween = (to) => {
+      cancelAnimationFrame(raf);
+      if (reduced) { paint([to, to, to]); return; }
+      const from = ts.slice(); const t0 = performance.now(); const dur = 1800;
+      const run = (now) => {
+        const k = ease(clamp((now - t0) / dur));
+        paint(from.map((v, i) => v + (to - v) * clamp(k * 1.6 - i * 0.3)));
+        if (k < 1) raf = requestAnimationFrame(run);
       };
-      const onScroll = () => { if (!frame) frame = requestAnimationFrame(update); };
-      window.addEventListener("scroll", onScroll, { passive: true });
-      window.addEventListener("resize", onScroll, { passive: true });
-      update();
-    }
+      raf = requestAnimationFrame(run);
+    };
+    const mode = () => {
+      window.removeEventListener("scroll", onScroll);
+      if (wide.matches && !reduced) {
+        replay.hidden = true;
+        window.addEventListener("scroll", onScroll, { passive: true });
+        scrub();
+      } else {
+        replay.hidden = false;
+        replay.textContent = "Show the defects";
+        paint([1, 1, 1]);
+      }
+    };
+    replay.addEventListener("click", () => {
+      const fixed = ts.every((v) => v >= 1);
+      if (fixed) { paint([0, 0, 0]); replay.textContent = "Correct them"; }
+      else { tween(1); replay.textContent = "Show the defects"; }
+    });
+    wide.addEventListener("change", mode);
+    window.addEventListener("resize", onScroll, { passive: true });
+    mode();
   }
 
-  const config = document.querySelector("[data-config]");
-  const path = document.querySelector("[data-client-path]");
-  const keysToggle = document.querySelector("[data-keys]");
-  if (config && path) {
-    const clients = {
-      claude: {
-        path: "terminal",
-        keys: "claude mcp add ip-search-mcp -e USPTO_ODP_API_KEY=... -e USPTO_TSDR_API_KEY=... -- npx -y ip-search-mcp\nclaude mcp list",
-        plain: "claude mcp add ip-search-mcp -- npx -y ip-search-mcp\nclaude mcp list",
-      },
-      cursor: {
-        path: "~/.cursor/mcp.json",
-        plain: '{\n  "mcpServers": {\n    "ip-search-mcp": {\n      "command": "npx",\n      "args": ["-y", "ip-search-mcp"]\n    }\n  }\n}',
-        keys: '{\n  "mcpServers": {\n    "ip-search-mcp": {\n      "command": "npx",\n      "args": ["-y", "ip-search-mcp"],\n      "env": {\n        "USPTO_ODP_API_KEY": "...",\n        "USPTO_TSDR_API_KEY": "..."\n      }\n    }\n  }\n}',
-      },
-      desktop: {
-        path: "claude_desktop_config.json",
-        plain: '{\n  "mcpServers": {\n    "ip-search-mcp": {\n      "command": "npx",\n      "args": ["-y", "ip-search-mcp"]\n    }\n  }\n}',
-        keys: '{\n  "mcpServers": {\n    "ip-search-mcp": {\n      "command": "npx",\n      "args": ["-y", "ip-search-mcp"],\n      "env": {\n        "USPTO_ODP_API_KEY": "...",\n        "USPTO_TSDR_API_KEY": "..."\n      }\n    }\n  }\n}',
-      },
+  /* ---------- the clock: assessDisclosure, ported ---------- */
+  const clock = document.querySelector("[data-clock-out]");
+  if (clock) {
+    const dateEl = document.querySelector("[data-clock-date]");
+    const planEl = document.querySelector("[data-clock-plan]");
+    const nEl = clock.querySelector("[data-clock-n]");
+    const unitEl = clock.querySelector("[data-clock-unit]");
+    const lineEl = clock.querySelector("[data-clock-line]");
+    const ruler = clock.querySelector("[data-ruler]");
+    const startEl = clock.querySelector("[data-clock-start]");
+    const endEl = clock.querySelector("[data-clock-end]");
+    const iso = (d) => d.toISOString().slice(0, 10);
+    const DAY = 86400000;
+    let shown = 0; let raf = 0;
+    const count = (to) => {
+      cancelAnimationFrame(raf);
+      if (reduced) { nEl.textContent = String(to); shown = to; return; }
+      const from = shown; const t0 = performance.now();
+      const run = (now) => {
+        const k = ease(clamp((now - t0) / 700));
+        shown = Math.round(from + (to - from) * k);
+        nEl.textContent = String(shown);
+        if (k < 1) raf = requestAnimationFrame(run);
+      };
+      raf = requestAnimationFrame(run);
     };
-    let current = "claude";
+    const track = ruler.querySelector(".ruler__track");
+    let lastFrac = 0;
+    const place = (frac) => { lastFrac = frac; ruler.style.setProperty("--x", (frac * track.clientWidth).toFixed(1) + "px"); };
+    window.addEventListener("resize", () => place(lastFrac), { passive: true });
     const render = () => {
-      const entry = clients[current];
-      config.textContent = keysToggle && keysToggle.checked ? entry.keys : entry.plain;
-      path.textContent = entry.path;
+      const parsed = Date.parse(dateEl.value);
+      if (!Number.isFinite(parsed)) { clock.hidden = true; return; }
+      clock.hidden = false;
+      const disclosure = new Date(parsed);
+      const deadline = new Date(parsed);
+      deadline.setUTCMonth(deadline.getUTCMonth() + 12);
+      const now = new Date();
+      const days = Math.round((deadline.getTime() - now.getTime()) / DAY);
+      const planParsed = Date.parse(planEl.value);
+      const planned = Number.isFinite(planParsed) ? new Date(planParsed) : null;
+      const closed = (planned ?? now) > deadline;
+      const urgency = closed ? "barred" : days <= 90 ? "time-critical" : "routine";
+      clock.dataset.urgency = urgency;
+      if (closed) {
+        nEl.textContent = "Closed"; shown = 0; cancelAnimationFrame(raf);
+        unitEl.textContent = "";
+        lineEl.textContent = planned && planned > deadline
+          ? "A filing on " + iso(planned) + " falls after the deadline of " + iso(deadline) + "."
+          : "The one-year US grace period ended on " + iso(deadline) + ".";
+      } else {
+        count(days);
+        unitEl.textContent = days === 1 ? "day left in the US grace period" : "days left in the US grace period";
+        lineEl.textContent = (urgency === "time-critical" ? "Time-critical. " : "") + "File a US application on or before " + iso(deadline) + ".";
+      }
+      const frac = clamp((now.getTime() - disclosure.getTime()) / (deadline.getTime() - disclosure.getTime()));
+      ruler.style.setProperty("--f", frac.toFixed(4));
+      place(frac);
+      startEl.textContent = "disclosed " + iso(disclosure);
+      endEl.textContent = "deadline " + iso(deadline);
+      window.__clockPrompt = "Run disclosure_review for a public disclosure on " + iso(disclosure) + (planned ? " and a planned filing on " + iso(planned) : "") + ". Report the US deadline and every absolute-novelty jurisdiction. File nothing.";
     };
-    document.querySelectorAll("[data-client]").forEach((button) => {
-      button.addEventListener("click", () => {
-        current = button.dataset.client;
-        document.querySelectorAll("[data-client]").forEach((other) => {
-          other.setAttribute("aria-pressed", String(other === button));
-        });
-        render();
-      });
-    });
-    if (keysToggle) keysToggle.addEventListener("change", render);
+    const seed = new Date(Date.now() - 118 * DAY);
+    dateEl.value = iso(seed);
+    dateEl.addEventListener("input", render);
+    planEl.addEventListener("input", render);
+    document.querySelector("[data-clock-form]").addEventListener("submit", (e) => e.preventDefault());
     render();
   }
 
-  const buttonText = new WeakMap();
-  document.querySelectorAll("[data-copy], [data-copy-text]").forEach((button) => {
-    buttonText.set(button, button.textContent);
-    button.addEventListener("click", async () => {
-      const selector = button.dataset.copy;
-      const target = selector ? document.querySelector(selector) : null;
-      const text = target ? target.innerText : button.dataset.copyText;
-      try {
-        await navigator.clipboard.writeText(text);
-        button.textContent = "Copied";
-      } catch {
-        button.textContent = "Select and copy";
-      }
-      setTimeout(() => { button.textContent = buttonText.get(button); }, 2400);
-    });
-  });
+  /* ---------- dock: always one click from installing ---------- */
+  const dock = document.querySelector("[data-dock]");
+  if (dock && "IntersectionObserver" in window) {
+    const hide = new Set();
+    const sync = () => {
+      const on = hide.size === 0;
+      dock.classList.toggle("is-visible", on);
+      dock.setAttribute("aria-hidden", String(!on));
+      dock.toggleAttribute("inert", !on);
+    };
+    const watch = (el, threshold = 0.35) => {
+      if (!el) return;
+      new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) hide.add(el); else hide.delete(el);
+        sync();
+      }, { threshold }).observe(el);
+    };
+    watch(document.querySelector(".hero"));
+    watch(document.querySelector(".pass"), 0);
+    watch(document.querySelector("#install"));
+    hide.add(document.querySelector(".hero"));
+  }
 })();
 </script>
 </body>
 </html>
+        </div>
+
