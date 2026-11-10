@@ -67,6 +67,13 @@ test("flags claim terms missing from the specification", () => {
   assert.ok(findings.some((finding) => finding.ruleId === "claims.support"));
 });
 
+test("specification support tolerates inflectional endings", () => {
+  const { findings } = lintClaims("1. A device comprising a housing that defines a chamber and corrects drift.", {
+    specificationText: "The device has a housing defining a chamber and correct drift.",
+  });
+  assert.equal(findings.filter((finding) => finding.ruleId === "claims.support").length, 0);
+});
+
 test("rejects claim sets with no independent claim", () => {
   const { findings } = lintClaims("2. The device of claim 1, wherein the sensor is optical.");
   assert.ok(findings.some((finding) => finding.ruleId === "claims.independent"));

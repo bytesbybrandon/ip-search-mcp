@@ -171,7 +171,10 @@ export function draftClaims(input: ClaimDraftInput): ClaimDraft {
   if (elements.length === 0) {
     gaps.push("At least one structural element for the independent claim");
   }
-  const subject = input.subject.trim() || "apparatus";
+  const cleaned = input.subject.trim().replace(/^(a|an|the)\s+/i, "");
+  const subject = /^[A-Z][a-z]/.test(cleaned)
+    ? `${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)}`
+    : cleaned || "apparatus";
   const lines: string[] = [];
 
   const body = elements.length > 0
@@ -200,9 +203,6 @@ export function draftClaims(input: ClaimDraftInput): ClaimDraft {
     lines.push("");
   }
 
-  lines.push(
-    "<!-- Dependent claims: add limitations that narrow the independent claim. Each dependent claim must further limit the claim it references (37 CFR 1.75(c)). -->",
-  );
   gaps.push("Dependent claims with narrowing limitations");
   gaps.push("Claim differentiation review against the closest prior art");
 

@@ -24,6 +24,7 @@ export interface ClassificationGuess {
   code: string;
   label: string;
   basis: string;
+  confidence: "low" | "medium";
 }
 
 export interface Assessment {
@@ -57,6 +58,7 @@ const CPC_HINTS: Array<{ code: string; label: string; terms: string[] }> = [
   { code: "A63F", label: "card, board, or roulette games; video games", terms: ["game", "player", "level", "score", "avatar", "quest"] },
   { code: "G02B", label: "optical elements, systems, or apparatus", terms: ["lens", "optical", "waveguide", "laser", "hologram"] },
   { code: "G01N", label: "investigating or analysing materials", terms: ["assay", "sample", "detector", "spectrometer", "measurement"] },
+  { code: "G01B", label: "measuring length, thickness, or position; angular measurement", terms: ["metrology", "calibration", "calibrating", "displacement", "position", "gauge", "drift"] },
 ];
 
 const NICE_HINTS: Array<{ code: string; label: string; terms: string[] }> = [
@@ -160,22 +162,41 @@ function subjectMatterScreen(concept: string): ScreenFinding[] {
   return findings;
 }
 
+function matchesTerm(text: string, term: string): boolean {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escaped}\\b`, "i").test(text);
+}
+
 function classify(concept: string): ClassificationGuess[] {
   const lower = concept.toLowerCase();
   const guesses: ClassificationGuess[] = [];
   for (const entry of CPC_HINTS) {
-    const matched = entry.terms.filter((term) => lower.includes(term));
-    if (matched.length >= 2) {
-      guesses.push({ scheme: "CPC", code: entry.code, label: entry.label, basis: matched.join(", ") });
+    const matched = entry.terms.filter((term) => matchesTerm(lower, term));
+    if (matched.length >= 1) {
+      guesses.push({
+        scheme: "CPC",
+        code: entry.code,
+        label: entry.label,
+        basis: matched.join(", "),
+        confidence: matched.length >= 2 ? "medium" : "low",
+      });
     }
   }
   for (const entry of NICE_HINTS) {
-    const matched = entry.terms.filter((term) => lower.includes(term));
+    const matched = entry.terms.filter((term) => matchesTerm(lower, term));
     if (matched.length >= 1) {
-      guesses.push({ scheme: "Nice", code: entry.code, label: entry.label, basis: matched.join(", ") });
+      guesses.push({
+        scheme: "Nice",
+        code: entry.code,
+        label: entry.label,
+        basis: matched.join(", "),
+        confidence: matched.length >= 2 ? "medium" : "low",
+      });
     }
   }
-  return guesses.slice(0, 10);
+  return guesses
+    .sort((a, b) => Number(b.confidence === "medium") - Number(a.confidence === "medium"))
+    .slice(0, 10);
 }
 
 function distinctiveness(markText: string | undefined, concept: string): Assessment["trademark"]["distinctiveness"] {

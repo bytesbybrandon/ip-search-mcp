@@ -21,7 +21,7 @@ const STOPWORDS = new Set([
   "method", "system", "apparatus", "device", "comprising", "configured", "adapted", "operable",
   "step", "steps", "first", "second", "third", "thereof", "therein", "thereto", "such", "each",
   "has", "have", "includes", "include", "comprises", "comprise", "disposed", "mounted", "configured",
-  "coupled", "attached", "located", "arranged", "extending", "defines", "formed", "provided", "adapted",
+  "coupled", "attached", "located", "arranged", "extending", "defines", "defining", "formed", "provided", "adapted",
 ]);
 
 export function parseClaims(raw: string): ParsedClaim[] {
@@ -253,9 +253,10 @@ export function lintClaims(raw: string, options: LintOptions = {}): { claims: Pa
   }
 
   if (options.specificationText) {
-    const specWords = new Set(contentWords(options.specificationText));
+    const stem = (word: string): string => word.replace(/(ing|ed|es|s)$/, "").replace(/e$/, "") || word;
+    const specWords = new Set(contentWords(options.specificationText).map(stem));
     for (const claim of claims) {
-      const missing = contentWords(claim.text).filter((word) => !specWords.has(word));
+      const missing = contentWords(claim.text).filter((word) => !specWords.has(stem(word)));
       if (missing.length > 0) {
         findings.push({
           severity: "warning",

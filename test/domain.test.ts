@@ -23,6 +23,15 @@ test("trademark screen marks a laudatory wordmark as possibly descriptive", () =
   assert.ok(assessment.trademark.dupontFactors.length >= 5);
 });
 
+test("classification matches whole words, not substrings", () => {
+  const assessment = assessConcept({
+    concept: "A housing that holds a reference surface and measures drift inside a sealed chamber.",
+  });
+  assert.equal(assessment.classifications.filter((entry) => entry.code === "25").length, 0);
+  assert.ok(assessment.classifications.every((entry) => entry.confidence === "low" || entry.confidence === "medium"));
+  assert.ok(assessment.classifications.some((entry) => entry.code === "G01B" || entry.code === "G02B"));
+});
+
 test("assessment states what evidence is missing", () => {
   const assessment = assessConcept({ concept: "A mechanical valve with a ceramic seat for high temperature service." });
   assert.ok(assessment.missingEvidence.some((entry) => /No patent or application hits/.test(entry)));

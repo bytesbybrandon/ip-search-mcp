@@ -1,5 +1,6 @@
+import { mkdirSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { join, extname } from "node:path";
+import { dirname, join, extname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { XMLParser } from "fast-xml-parser";
 import { config } from "../config.js";
@@ -22,6 +23,7 @@ export interface IndexStatus {
 }
 
 export function openIndex(path = config.indexDbPath, readonly = false): DatabaseSync {
+  if (!readonly) mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path, { readOnly: readonly });
   db.exec(`
     CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);

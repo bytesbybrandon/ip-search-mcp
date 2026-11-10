@@ -258,7 +258,7 @@ export function createServer(): McpServer {
           notes.push(...markResult.notes);
         }
         const assessment = assessConcept({ concept, productName, patentHits: patents, trademarkHits: trademarks });
-        return ok({ ...assessment, disclaimer: ASSESSMENT_DISCLAIMER, searchNotes: notes, draftBanner: DRAFT_BANNER });
+        return ok({ ...assessment, disclaimer: ASSESSMENT_DISCLAIMER, searchNotes: [...new Set(notes)], draftBanner: DRAFT_BANNER });
       }),
   );
 
@@ -428,6 +428,7 @@ export function createServer(): McpServer {
         return ok({
           hits: result.hits,
           providers: result.providers,
+          searched: result.providers.length > 0,
           notes: [
             ...result.notes,
             "Candidates are not a clearance opinion. Screening for likelihood of confusion is a legal judgment under 15 U.S.C. 1052(d).",
@@ -510,11 +511,16 @@ export function createServer(): McpServer {
         }
 
         const hits = [...seen.values()];
+        const searched = runs.some((run) => run.providers.length > 0);
         const lines: string[] = [];
         lines.push(`# Prior art search report: ${title}`);
         lines.push("");
         lines.push(DRAFT_BANNER);
         lines.push("");
+        if (!searched) {
+          lines.push("> **NO PROVIDER RAN.** This report contains no search evidence and must not be read as a novelty screen.");
+          lines.push("");
+        }
         lines.push(`Queries run: ${queries.length}. Unique references: ${hits.length}. Provider mode: ${provider}.`);
         lines.push("");
         lines.push("## Search runs");
@@ -552,7 +558,7 @@ export function createServer(): McpServer {
         lines.push("- Text search is not a classification search; run CPC classes separately before concluding.");
         lines.push("- Undocumented providers are labeled in each hit and must be verified against official records.");
         lines.push("- This report is not an opinion of patentability.");
-        return ok({ markdown: lines.join("\n"), hits, notes: [...new Set(notes)] });
+        return ok({ markdown: lines.join("\n"), hits, searched, notes: [...new Set(notes)] });
       }),
   );
 
@@ -649,7 +655,7 @@ export function createServer(): McpServer {
         const draft = draftSpecification(input as Parameters<typeof draftSpecification>[0]);
         const lint = input.claims
           ? lintClaims(input.claims, {
-              specificationText: [input.technicalField, input.background, input.summary, input.detailedDescription].filter(Boolean).join("\n"),
+              specificationText: [input.title, input.technicalField, input.background, input.summary, input.detailedDescription].filter(Boolean).join("\n"),
               abstractText: input.abstract,
               title: input.title,
             })
