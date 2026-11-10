@@ -400,7 +400,7 @@ claude mcp list</code></pre>
       <p class="tblock__mark wordmark">ip-search-mcp</p>
       <p class="tblock__cell"><span class="label">Rules</span><span class="measured">eCFR title 37</span></p>
       <p class="tblock__cell"><span class="label">Retrieved</span><span class="measured">2026-11-10</span></p>
-      <p class="tblock__cell"><span class="label">Licence</span><span class="measured">MIT</span></p>
+      <p class="tblock__cell"><span class="label">License</span><span class="measured">MIT</span></p>
       <div class="tblock__notice">
         <p class="label">Notice</p>
         <p>Keys stay local. Research and drafts for review by a licensed practitioner. Not legal advice. Nothing is filed.</p>
@@ -428,7 +428,6 @@ claude mcp list</code></pre>
 
 <script>
 (() => {
-  window.__composeBoot = true;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const clamp = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
   const ease = (t) => t * t * (3 - 2 * t);
@@ -569,6 +568,7 @@ claude mcp list</code></pre>
     window.addEventListener("resize", lock, { passive: true });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(lock);
     play(panels[0]);
+    window.__composeBoot = true;
   }
 
   /* ---------- the pinned pass ---------- */
