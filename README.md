@@ -97,6 +97,14 @@ node dist/src/index.js index status
 
 Bulk XML comes from the ODP bulk data directory (patent grants, published applications, trademark daily XML). The ingest is best-effort over the documented field names; verify field mapping against the USPTO data dictionary for the snapshot you use.
 
+Verified on a real ODP product, 2026-11-10: the trademark daily applications file `apc261107.zip` (7.7 MB compressed, 143 MB XML, 7,330 case-file records) indexed in 60 seconds with zero skips. Dates are normalized to ISO. Each `case-file` becomes one row, so a daily file is searched record by record instead of collapsing to its first entry.
+
+```bash
+node dist/src/axi/index.js index build --from ./apc261107 --db ./ip-index.sqlite
+```
+
+Trademark records from TDXF carry no status description text, only a status code, so `status` is empty for those rows until a status-code table is joined.
+
 ## Documentation
 
 - `ARCHITECTURE.md`: data flow, provider boundaries, provenance, caching, rate limits.

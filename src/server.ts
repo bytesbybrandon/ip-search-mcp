@@ -189,7 +189,11 @@ async function autoTrademarkSearch(
     if (status.exists && status.trademarks > 0) {
       const result = indexProvider.searchTrademarks(params.query ?? params.markText ?? "", { limit: params.limit ?? 20 });
       providers.push("index");
-      return { hits: result.hits, notes, providers };
+      return {
+        hits: result.hits,
+        notes: ["searched the local bulk index; the Trademark Search backend is disabled", ...notes.filter((note) => !note.startsWith("tmsearch skipped"))],
+        providers,
+      };
     }
     notes.push(`index skipped: ${indexProvider.EMPTY_INDEX_WARNING}`);
   }

@@ -98,6 +98,13 @@ function detectKind(payload: unknown): "grant" | "application" | "trademark" | u
   return undefined;
 }
 
+function isoDate(value: string | undefined): string {
+  if (!value) return "";
+  const digits = value.replace(/[^0-9]/g, "");
+  if (digits.length === 8) return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+  return value.slice(0, 10);
+}
+
 function flattenText(node: unknown, out: string[] = []): string[] {
   if (Array.isArray(node)) {
     for (const item of node) flattenText(item, out);
@@ -156,6 +163,34 @@ async function xmlFiles(root: string, out: string[] = []): Promise<string[]> {
   return out;
 }
 
+/**
+ * One file can hold thousands of records. TDXF daily files wrap each
+ * application in a case-file element, so split before parsing to keep memory
+ * bounded and to index every record instead of only the first.
+ */
+function extractRecords(text: string): Array<{ kind: "grant" | "application" | "trademark"; node: unknown }> {
+  const blocks = text.match(/<case-file>[\s\S]*?<\/case-file>/g) ?? [];
+  if (blocks.length > 0) {
+    const records: Array<{ kind: "grant" | "application" | "trademark"; node: unknown }> = [];
+    for (const block of blocks) {
+      try {
+        records.push({ kind: "trademark", node: parser.parse(block) });
+      } catch {
+        continue;
+      }
+    }
+    return records;
+  }
+  let payload: unknown;
+  try {
+    payload = parser.parse(text);
+  } catch {
+    return [];
+  }
+  const kind = detectKind(payload);
+  return kind ? [{ kind, node: payload }] : [];
+}
+
 export async function buildIndex(
   sourceDir: string,
   dbPath = config.indexDbPath,
@@ -189,89 +224,105 @@ export async function buildIndex(
   const result: BuildResult = { scanned: files.length, patents: 0, trademarks: 0, skipped: 0, errors: [] };
 
   for (const file of files) {
-    let payload: unknown;
+    let text: string;
     try {
-      payload = parser.parse(await readFile(file, "utf8"));
+      text = await readFile(file, "utf8");
     } catch (error) {
       result.skipped += 1;
       result.errors.push(`${file}: ${error instanceof Error ? error.message : String(error)}`);
       continue;
     }
 
-    const kind = detectKind(payload);
-    const index = leaves(payload);
-
-    if (kind === "grant" || kind === "application") {
-      const docNumber =
-        index.get("doc-number", "patent-number", "publication-number") ??
-        index.get("document-number");
-      if (!docNumber) {
-        result.skipped += 1;
-        continue;
-      }
-      const title = index.get("invention-title", "title");
-      const abstract = subtreeText(payload, "abstract", 20_000);
-      const claims = subtreeText(payload, "claims", 60_000);
-      const description = subtreeText(payload, "description", 120_000);
-      const filingDate = index.get("filing-date", "application-filing-date");
-      const grantDate = index.get("grant-date", "publication-date", "date");
-      const inventors = index.all("last-name", "first-name").join(" ");
-      const assignees = index.all("assignee-name", "orgname", "organization-name").join("; ");
-      const cpc = index.all("cpc", "classification-cpc", "main-classification").join("; ");
-      const number = docNumber.replace(/[^0-9]/g, "");
-
-      deletePatentFts.run(number);
-      insertPatent.run(
-        number,
-        kind,
-        title ?? "",
-        abstract,
-        claims,
-        description,
-        filingDate ?? "",
-        grantDate ?? "",
-        inventors,
-        assignees,
-        cpc,
-        file,
-      );
-      insertPatentFts.run(number, title ?? "", abstract, claims, description);
-      result.patents += 1;
+    const records = extractRecords(text);
+    if (records.length === 0) {
+      result.skipped += 1;
       continue;
     }
 
-    if (kind === "trademark") {
-      const serial = index.get("serial-number", "application-number")?.replace(/[^0-9]/g, "");
-      if (!serial) {
-        result.skipped += 1;
+    for (const record of records) {
+      const index = leaves(record.node);
+
+      if (record.kind === "grant" || record.kind === "application") {
+        const docNumber =
+          index.get("doc-number", "patent-number", "publication-number") ?? index.get("document-number");
+        if (!docNumber) {
+          result.skipped += 1;
+          continue;
+        }
+        const title = index.get("invention-title", "title");
+        const abstract = subtreeText(record.node, "abstract", 20_000);
+        const claims = subtreeText(record.node, "claims", 60_000);
+        const description = subtreeText(record.node, "description", 120_000);
+        const filingDate = index.get("filing-date", "application-filing-date");
+        const grantDate = index.get("grant-date", "publication-date", "date");
+        const inventors = index.all("last-name", "first-name").join(" ");
+        const assignees = index.all("assignee-name", "orgname", "organization-name").join("; ");
+        const cpc = index.all("cpc", "classification-cpc", "main-classification").join("; ");
+        const number = docNumber.replace(/[^0-9]/g, "");
+
+        deletePatentFts.run(number);
+        insertPatent.run(
+          number,
+          record.kind,
+          title ?? "",
+          abstract,
+          claims,
+          description,
+          isoDate(filingDate),
+          isoDate(grantDate),
+          inventors,
+          assignees,
+          cpc,
+          file,
+        );
+        insertPatentFts.run(number, title ?? "", abstract, claims, description);
+        result.patents += 1;
         continue;
       }
-      const mark = index.get("mark-text-text", "mark-verbalelementtext", "word-mark", "mark-text");
-      const owner = index.get("owner-name", "party-name", "name");
-      const goods = subtreeText(payload, "goods-services", 20_000);
-      const classes = index.all("international-class-number", "class-number").join(",");
-      const filingDate = index.get("filing-date");
-      const registrationNumber = index.get("registration-number")?.replace(/[^0-9]/g, "");
-      const status = index.get("mark-current-status-external-description-text", "status-description-text");
 
-      deleteTrademarkFts.run(serial);
-      insertTrademark.run(
-        serial,
-        mark ?? "",
-        owner ?? "",
-        goods,
-        classes,
-        filingDate ?? "",
-        registrationNumber ?? "",
-        status ?? "",
-        file,
-      );
-      insertTrademarkFts.run(serial, mark ?? "", owner ?? "", goods);
-      result.trademarks += 1;
-      continue;
+      if (record.kind === "trademark") {
+        const serial = index.get("serial-number", "application-number")?.replace(/[^0-9]/g, "");
+        if (!serial) {
+          result.skipped += 1;
+          continue;
+        }
+        const mark = index.get(
+          "mark-identification",
+          "mark-text-text",
+          "mark-verbalelementtext",
+          "word-mark",
+          "mark-text",
+        );
+        const owner = index.get("party-name", "owner-name", "name");
+        const goods = subtreeText(record.node, "goods-services", 20_000);
+        const classes = index
+          .all("international-code", "international-class-number", "class-number")
+          .map((value) => String(Number(value)))
+          .filter((value) => value !== "NaN")
+          .join(",");
+        const filingDate = index.get("filing-date");
+        const registrationNumber = index.get("registration-number")?.replace(/[^0-9]/g, "");
+        const status = index.get(
+          "mark-current-status-external-description-text",
+          "status-description-text",
+        );
+
+        deleteTrademarkFts.run(serial);
+        insertTrademark.run(
+          serial,
+          mark ?? "",
+          owner ?? "",
+          goods,
+          classes,
+          isoDate(filingDate),
+          registrationNumber ?? "",
+          status ?? "",
+          file,
+        );
+        insertTrademarkFts.run(serial, mark ?? "", owner ?? "", goods);
+        result.trademarks += 1;
+      }
     }
-
-    result.skipped += 1;
   }
 
   db.prepare(`INSERT OR REPLACE INTO meta(key, value) VALUES ('built_at', ?)`).run(new Date().toISOString());

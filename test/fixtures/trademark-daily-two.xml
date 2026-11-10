@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<trademark-applications-daily>
+  <case-file>
+    <serial-number>90000001</serial-number>
+    <registration-number>0000000</registration-number>
+    <case-file-header>
+      <filing-date>20240101</filing-date>
+      <mark-identification>ALPHA ONE</mark-identification>
+    </case-file-header>
+    <classifications>
+      <classification>
+        <international-code>009</international-code>
+      </classification>
+    </classifications>
+    <case-file-owners>
+      <case-file-owner>
+        <party-name>Alpha Company</party-name>
+      </case-file-owner>
+    </case-file-owners>
+  </case-file>
+  <case-file>
+    <serial-number>90000002</serial-number>
+    <registration-number>0000000</registration-number>
+    <case-file-header>
+      <filing-date>20240102</filing-date>
+      <mark-identification>BETA TWO</mark-identification>
+    </case-file-header>
+    <case-file-owners>
+      <case-file-owner>
+        <party-name>Beta LLC</party-name>
+      </case-file-owner>
+    </case-file-owners>
+  </case-file>
+</trademark-applications-daily>

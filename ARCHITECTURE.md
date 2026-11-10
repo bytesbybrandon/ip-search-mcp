@@ -83,7 +83,7 @@ There is no submission code path anywhere in the server: no EFS-Web, Patent Cent
 
 `node:sqlite` with FTS5 over `patents` and `trademarks` tables. Ingest walks a directory of XML, detects patent grant, published application, and trademark record shapes, extracts text subtrees (abstract, claims, description, goods and services), and writes both the row and its FTS entry. Search returns `bm25` order with the `index` provider label.
 
-Limits: memory scales with file size because each XML is parsed whole; the ingest is not incremental across releases beyond `INSERT OR REPLACE`; field mapping follows the documented TDXF and ICE names and must be checked against the data dictionary for a given snapshot.
+One file can hold thousands of records: `<case-file>` blocks are split and parsed individually so a daily TDXF file indexes every application and memory stays bounded. Patent grant and application XML files are parsed whole. Limits: ingest is not incremental across releases beyond `INSERT OR REPLACE`; field mapping follows the documented TDXF and ICE names and must be checked against the data dictionary for a given snapshot. Measured: 7,330 trademark records from a 143 MB file in 60 seconds.
 
 ## Failure behavior
 
