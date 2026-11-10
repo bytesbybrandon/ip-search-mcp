@@ -6,7 +6,7 @@
 <title>ip-search-mcp: patent and trademark research for agents</title>
 <meta name="description" content="An MCP server and CLI for patent and trademark research, 37 CFR 1.84 drawing validation, and review-only drafting. Provenance on every hit. Nothing is filed.">
 <meta property="og:title" content="ip-search-mcp">
-<meta property="og:description" content="Patent and trademark research your agent can cite. Nothing is filed.">
+<meta property="og:description" content="Patent research your agent can cite. Nothing is filed.">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,6 +20,7 @@
   <div class="container nav__inner">
     <a class="wordmark" href="./">ip-search-mcp</a>
     <nav aria-label="Primary">
+      <a href="#sheet">Sheet</a>
       <a href="#install">Install</a>
       <a href="https://github.com/bytesbybrandon/ip-search-mcp">Source</a>
     </nav>
@@ -32,138 +33,233 @@
     <div class="container hero__grid">
       <div class="hero__text">
         <h1 id="hero-title">Patent research your agent can cite.</h1>
-        <p class="lead">Nineteen tools over the open registers, with provenance on every hit.</p>
         <div class="actions">
-          <button class="btn btn--primary" type="button" data-copy="#mcp-config">Copy the MCP config</button>
-          <a class="btn" href="#install">Install notes</a>
+          <button class="btn btn--primary" type="button" data-copy-text="npx -y ip-search-mcp">Copy the install command</button>
+          <a class="btn" href="#sheet">Watch a sheet pass</a>
         </div>
-        <p class="note">No filing, signing, or submission path exists.</p>
+        <p class="note">Nineteen tools. Every hit carries its provider and retrieval time.</p>
       </div>
 
-      <figure class="hero__visual">
-        <figcaption class="label">MCP client configuration</figcaption>
-        <div class="panel-code">
-          <p class="panel-code__bar"><span class="label">First command</span><code>npx -y ip-axi</code></p>
-          <pre class="code" id="mcp-config"><code>{
-  "mcpServers": {
-    "ip-search-mcp": {
-      "command": "npx",
-      "args": ["-y", "ip-search-mcp"],
-      "env": {
-        "USPTO_ODP_API_KEY": "...",
-        "USPTO_TSDR_API_KEY": "..."
-      }
-    }
-  }
-}</code></pre>
+      <div class="console" data-console>
+        <div class="console__bar" role="tablist" aria-label="Recorded sessions">
+          <button class="console__tab" role="tab" aria-selected="true" aria-controls="panel-status" id="tab-status" data-tab="status">status</button>
+          <button class="console__tab" role="tab" aria-selected="false" aria-controls="panel-search" id="tab-search" data-tab="search" tabindex="-1">search</button>
+          <button class="console__tab" role="tab" aria-selected="false" aria-controls="panel-drawings" id="tab-drawings" data-tab="drawings" tabindex="-1">drawings</button>
+          <span class="console__stamp measured">2026-11-10</span>
         </div>
-        <p class="note">Keys are optional. Missing keys narrow the run.</p>
-      </figure>
+
+        <div class="console__panel" role="tabpanel" id="panel-status" aria-labelledby="tab-status" data-panel="status">
+          <p class="console__cmd"><span class="label">Command</span><code>ip-axi trademarks get 87454105</code></p>
+          <pre class="code" tabindex="0"><code>mark: DOCKER
+status: ACTIVE
+owner: Docker, Inc.
+serial: 87454105
+registration: 6096739
+filed: 2017-05-17
+registered: 2020-07-07
+classes: 9
+next[1]:
+  ip-axi trademarks docs 87454105</code></pre>
+          <dl class="console__meta">
+            <div><dt>provider</dt><dd class="measured">tsdr</dd></div>
+            <div><dt>route</dt><dd class="measured">GET /ts/cd/casestatus/sn87454105/info</dd></div>
+            <div><dt>retrieved</dt><dd class="measured">2026-11-10</dd></div>
+          </dl>
+        </div>
+
+        <div class="console__panel" role="tabpanel" id="panel-search" aria-labelledby="tab-search" data-panel="search" hidden>
+          <p class="console__cmd"><span class="label">Command</span><code>ip-axi patents search "lens" --limit 1</code></p>
+          <pre class="code" tabindex="0"><code>results[1 of 47461 total]{number,date,assignee,title}:
+  96050163,2026-09-02,,IMAGING LENS ASSEMBLY
+next[3]:
+  ip-axi patents get 96050163
+  ip-axi patents docs 96050163
+  ip-axi status
+help[1]:
+  ODP sort and filter field names are not verified without the signed-in documentation.</code></pre>
+          <dl class="console__meta">
+            <div><dt>provider</dt><dd class="measured">odp</dd></div>
+            <div><dt>route</dt><dd class="measured">POST /api/v1/patent/applications/search</dd></div>
+            <div><dt>retrieved</dt><dd class="measured">2026-11-10</dd></div>
+          </dl>
+        </div>
+
+        <div class="console__panel" role="tabpanel" id="panel-drawings" aria-labelledby="tab-drawings" data-panel="drawings" hidden>
+          <p class="console__cmd"><span class="label">Command</span><code>ip-axi drawings validate fig-1.svg</code></p>
+          <pre class="code" tabindex="0"><code>ok: true
+errors: 0
+warnings: 2
+minTextMm: 3.6
+refs: 10,12,14,16
+findings[2]{severity,rule,citation,message}:
+  warning,text.place,"37 CFR 1.84(p)(3), (p)(5)",reference character 14 appears in the drawing but not in the description</code></pre>
+          <dl class="console__meta">
+            <div><dt>source</dt><dd class="measured">37 CFR 1.84</dd></div>
+            <div><dt>rules</dt><dd class="measured">17</dd></div>
+            <div><dt>validator</dt><dd class="measured">local</dd></div>
+          </dl>
+        </div>
+
+        <p class="console__foot note">Recorded from live runs. Keys stay local.</p>
+      </div>
     </div>
   </section>
 
-  <section class="section" aria-labelledby="what">
+  <section class="section demo" id="sheet" aria-labelledby="sheet-title">
+    <div class="container demo__grid">
+      <div class="demo__sticky">
+        <p class="label">FIG. 1, as the validator sees it</p>
+        <svg class="sheet fix-margin fix-weight fix-refs" viewBox="0 0 210 297" role="img" aria-labelledby="sheet-desc">
+          <desc id="sheet-desc">A schematic drawing sheet. Three defects, a margin breach, a hairline stroke, and undersized reference characters, are corrected as the sections beside it are read.</desc>
+          <rect class="sheet__paper" x="0" y="0" width="210" height="297" rx="2"/>
+          <g class="sheet__guides">
+            <rect x="25" y="25" width="170" height="262"/>
+            <line x1="25" y1="12" x2="25" y2="20"/>
+            <line x1="12" y1="25" x2="20" y2="25"/>
+            <text x="27" y="16">25 mm</text>
+          </g>
+          <g class="sheet__content">
+            <rect class="housing" x="8" y="92" width="128" height="86" rx="1"/>
+            <rect class="chamber" x="24" y="108" width="82" height="54"/>
+            <circle class="sensor" cx="65" cy="135" r="17"/>
+            <line class="seat" x1="82" y1="160" x2="140" y2="160"/>
+            <line class="leader" x1="82" y1="135" x2="150" y2="135"/>
+            <path class="leader" d="M150 135 h14"/>
+            <text class="ref" x="10" y="88">10</text>
+            <text class="ref" x="120" y="88">12</text>
+            <text class="ref" x="168" y="130">14</text>
+            <text class="ref" x="168" y="156">16</text>
+          </g>
+          <g class="sheet__caption">
+            <text x="25" y="282">Sheet 1 of 1</text>
+            <text x="185" y="282" text-anchor="end">FIG. 1</text>
+          </g>
+        </svg>
+        <p class="demo__status measured" data-demo-status>3 defects corrected</p>
+      </div>
+
+      <div class="demo__steps">
+        <h2 id="sheet-title">Three rules decide whether a drawing is readable.</h2>
+        <ol class="steps">
+          <li class="step" data-fix="fix-margin">
+            <p class="step__n measured">01</p>
+            <h3>Margin</h3>
+            <p>Top and left are 25 mm, right 15 mm, bottom 10 mm. The sight is what remains.</p>
+            <p class="measured step__cite">37 CFR 1.84(g)</p>
+          </li>
+          <li class="step" data-fix="fix-weight">
+            <p class="step__n measured">02</p>
+            <h3>Line weight</h3>
+            <p>A hairline dies in reproduction. 0.18 mm is the floor.</p>
+            <p class="measured step__cite">37 CFR 1.84(l)</p>
+          </li>
+          <li class="step" data-fix="fix-refs">
+            <p class="step__n measured">03</p>
+            <h3>Reference characters</h3>
+            <p>Every character is at least 3.2 mm high and appears in the description.</p>
+            <p class="measured step__cite">37 CFR 1.84(p)(3)</p>
+          </li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="section ledger" aria-labelledby="ledger-title">
     <div class="container">
       <div class="section__head">
-        <h2 id="what">One server, one command, one record.</h2>
-        <p class="lead">One contract, two surfaces.</p>
+        <h2 id="ledger-title">The record.</h2>
       </div>
-      <div class="panels">
-        <article class="panel">
-          <h3>Server</h3>
-          <p>USPTO ODP, TSDR, and EPO OPS, with provenance.</p>
-        </article>
-        <article class="panel">
-          <h3>CLI</h3>
-          <p><code>ip-axi</code> returns TOON, totals, next command.</p>
-        </article>
-        <article class="panel">
-          <h3>Index</h3>
-          <p>SQLite FTS5 over USPTO bulk XML.</p>
-        </article>
-      </div>
+
+      <details class="record">
+        <summary>
+          <span class="record__name">Drawings</span>
+          <span class="record__rule measured">1.84</span>
+          <span class="record__what">Sheet, ink, line, text, views.</span>
+        </summary>
+        <div class="record__body">
+          <p>Seventeen checks, each with the paragraph that produced it.</p>
+          <p class="measured">errors: 0<br>warnings: 2<br>minTextMm: 3.6</p>
+        </div>
+      </details>
+
+      <details class="record">
+        <summary>
+          <span class="record__name">Claims</span>
+          <span class="record__rule measured">112</span>
+          <span class="record__what">Numbering, dependency, antecedent basis.</span>
+        </summary>
+        <div class="record__body">
+          <p>Dependency graphs and transitive antecedent basis.</p>
+          <p class="measured">claims: 1 independent<br>findings: 0</p>
+        </div>
+      </details>
+
+      <details class="record">
+        <summary>
+          <span class="record__name">Disclosure</span>
+          <span class="record__rule measured">102(b)(1)</span>
+          <span class="record__what">Grace clock, absolute-novelty flags.</span>
+        </summary>
+        <div class="record__body">
+          <p>The clock starts at the earliest recorded disclosure.</p>
+          <p class="measured">deadline: 2027-09-01<br>days: 294</p>
+        </div>
+      </details>
     </div>
   </section>
 
-  <section class="section readings" aria-labelledby="numbers">
-    <div class="container">
-      <h2 id="numbers" class="visually-hidden">Measured surface</h2>
-      <div class="readings__grid">
-        <div class="reading">
-          <p class="reading__value">19</p>
-          <p class="label">MCP tools</p>
-        </div>
-        <div class="reading">
-          <p class="reading__value">17</p>
-          <p class="label">drawing rules from 37 CFR 1.84</p>
-        </div>
-        <div class="reading">
-          <p class="reading__value">37</p>
-          <p class="label">tests in the suite</p>
-        </div>
-        <div class="reading">
-          <p class="reading__value">7,330</p>
-          <p class="label">trademark records from one daily file</p>
-        </div>
+  <section class="section figures" aria-labelledby="figures-title">
+    <div class="container figures__grid">
+      <div class="figures__lead">
+        <h2 id="figures-title" class="visually-hidden">Measured</h2>
+        <p class="figure__big measured">7,330</p>
+        <p class="figure__unit">records, indexed in <span class="measured">60 s</span>.</p>
       </div>
-    </div>
-  </section>
-
-  <section class="section" aria-labelledby="drafting">
-    <div class="container trail">
-      <div class="section__head">
-        <h2 id="drafting">Drafting that states its own gaps.</h2>
-      </div>
-      <div class="trail__rows">
-        <div class="trail__row">
-          <p class="trail__name">Claims</p>
-          <p class="trail__what">Numbering, dependencies, antecedent basis, 112(f) triggers.</p>
-          <p class="measured trail__cite">35 U.S.C. 112</p>
-        </div>
-        <div class="trail__row">
-          <p class="trail__name">Drawings</p>
-          <p class="trail__what">Margins, ink, line weight, text height, reference characters.</p>
-          <p class="measured trail__cite">37 CFR 1.84</p>
-        </div>
-        <div class="trail__row">
-          <p class="trail__name">Disclosure clock</p>
-          <p class="trail__what">US grace deadline and absolute-novelty jurisdictions.</p>
-          <p class="measured trail__cite">35 U.S.C. 102(b)(1)</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="section limits" aria-labelledby="limits">
-    <div class="container">
-      <h2 id="limits" class="visually-hidden">Limits</h2>
-      <p class="limits__statement">Nothing here can be filed, signed, or submitted.</p>
-      <div class="limits__rows">
-        <p>Missing facts become gaps.</p>
-        <p>Skipped providers stay in the artifact.</p>
-      </div>
+      <dl class="figures__list">
+        <div><dt class="label">MCP tools</dt><dd class="measured">19</dd></div>
+        <div><dt class="label">drawing rules</dt><dd class="measured">17</dd></div>
+        <div><dt class="label">tests</dt><dd class="measured">37</dd></div>
+      </dl>
     </div>
   </section>
 
   <section class="section install" id="install" aria-labelledby="install-title">
     <div class="container install__grid">
       <div>
-        <h2 id="install-title">Run it.</h2>
-        <p class="lead">Node 24 or newer.</p>
+        <h2 id="install-title">Pick your client.</h2>
+        <p class="lead">Keys optional.</p>
+        <div class="switcher" role="group" aria-label="Client">
+          <button class="switch" type="button" data-client="claude" aria-pressed="true">Claude Code</button>
+          <button class="switch" type="button" data-client="cursor" aria-pressed="false">Cursor</button>
+          <button class="switch" type="button" data-client="desktop" aria-pressed="false">Claude Desktop</button>
+        </div>
+        <label class="keys">
+          <input type="checkbox" data-keys>
+          <span>Include key placeholders</span>
+        </label>
+      </div>
+      <div class="install__out">
+        <p class="label" data-client-path>terminal</p>
+        <pre class="code" id="client-config"><code data-config>claude mcp add ip-search-mcp -- npx -y ip-search-mcp
+claude mcp list</code></pre>
         <div class="actions">
-          <a class="btn btn--primary" href="https://www.npmjs.com/package/ip-axi">ip-axi on npm</a>
+          <button class="btn btn--primary" type="button" data-copy="#client-config">Copy</button>
+          <a class="btn" href="https://github.com/bytesbybrandon/ip-search-mcp#readme">Full setup</a>
         </div>
       </div>
-      <div class="install__code">
-        <figure>
-          <figcaption class="label">CLI</figcaption>
-          <pre class="code"><code>npx -y ip-axi
-npx -y ip-axi trademarks get 87454105</code></pre>
-        </figure>
-        <figure>
-          <figcaption class="label">MCP server</figcaption>
-          <pre class="code"><code>npx -y ip-search-mcp</code></pre>
-        </figure>
+    </div>
+  </section>
+
+  <section class="section handoff" aria-labelledby="handoff-title">
+    <div class="container handoff__grid">
+      <div>
+        <h2 id="handoff-title">Ask for evidence.</h2>
+      </div>
+      <div class="handoff__card">
+        <pre class="code" id="agent-prompt"><code>Search patents for a self-calibrating optical sensor. List three references with provider and date. No novelty claims.</code></pre>
+        <div class="actions">
+          <button class="btn btn--primary" type="button" data-copy="#agent-prompt">Copy the prompt</button>
+        </div>
       </div>
     </div>
   </section>
@@ -171,7 +267,7 @@ npx -y ip-axi trademarks get 87454105</code></pre>
 </main>
 
 <footer class="footer">
-  <div class="container footer__inner">
+  <div class="container footer__grid">
     <p class="wordmark">ip-search-mcp</p>
     <nav aria-label="Footer">
       <a href="https://github.com/bytesbybrandon/ip-search-mcp">GitHub</a>
@@ -179,24 +275,126 @@ npx -y ip-axi trademarks get 87454105</code></pre>
       <a href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/TOOLS.md">Tools</a>
       <a href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/LIMITS.md">Limits</a>
     </nav>
-    <p class="note">Research and drafts for review by a licensed practitioner. Not legal advice. MIT licensed.</p>
+    <div class="colophon">
+      <p class="note">Console theme. Rules encoded from eCFR title 37, retrieved 2026-11-10. MIT licensed.</p>
+      <p class="note">Research and drafts for review by a licensed practitioner. Not legal advice. Nothing is filed.</p>
+    </div>
   </div>
 </footer>
 
 <script>
-document.querySelectorAll("[data-copy]").forEach((button) => {
-  button.addEventListener("click", async () => {
-    const target = document.querySelector(button.dataset.copy);
-    if (!target) return;
-    try {
-      await navigator.clipboard.writeText(target.innerText);
-      button.textContent = "Copied";
-    } catch {
-      button.textContent = "Select the block to copy";
+(() => {
+  const consoleEl = document.querySelector("[data-console]");
+  if (consoleEl) {
+    const tabs = [...consoleEl.querySelectorAll("[data-tab]")];
+    const panels = [...consoleEl.querySelectorAll("[data-panel]")];
+    const select = (name) => {
+      tabs.forEach((tab) => {
+        const active = tab.dataset.tab === name;
+        tab.setAttribute("aria-selected", String(active));
+        tab.tabIndex = active ? 0 : -1;
+      });
+      panels.forEach((panel) => {
+        panel.hidden = panel.dataset.panel !== name;
+      });
+    };
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => select(tab.dataset.tab));
+      tab.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        const index = tabs.indexOf(tab);
+        const next = tabs[(index + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+        next.focus();
+        select(next.dataset.tab);
+      });
+    });
+  }
+
+  const demo = document.querySelector(".sheet");
+  if (demo) {
+    const fixes = ["fix-margin", "fix-weight", "fix-refs"];
+    const status = document.querySelector("[data-demo-status]");
+    const section = document.querySelector(".demo");
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    fixes.forEach((fix) => demo.classList.add(fix));
+    if (status) status.textContent = "3 defects corrected";
+    if (!still && section) {
+      fixes.forEach((fix) => demo.classList.remove(fix));
+      if (status) status.textContent = "3 defects open";
+      let frame = 0;
+      const update = () => {
+        frame = 0;
+        const rect = section.getBoundingClientRect();
+        const travel = Math.max(1, rect.height - window.innerHeight);
+        const progress = Math.min(1, Math.max(0, -rect.top / travel));
+        const applied = progress < 0.25 ? 0 : progress < 0.5 ? 1 : progress < 0.75 ? 2 : 3;
+        fixes.forEach((fix, index) => demo.classList.toggle(fix, index < applied));
+        if (status) status.textContent = applied === 3 ? "3 defects corrected" : (3 - applied) + (applied === 2 ? " defect open" : " defects open");
+      };
+      const onScroll = () => { if (!frame) frame = requestAnimationFrame(update); };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll, { passive: true });
+      update();
     }
-    setTimeout(() => { button.textContent = "Copy the MCP config"; }, 2400);
+  }
+
+  const config = document.querySelector("[data-config]");
+  const path = document.querySelector("[data-client-path]");
+  const keysToggle = document.querySelector("[data-keys]");
+  if (config && path) {
+    const clients = {
+      claude: {
+        path: "terminal",
+        keys: "claude mcp add ip-search-mcp -e USPTO_ODP_API_KEY=... -e USPTO_TSDR_API_KEY=... -- npx -y ip-search-mcp\nclaude mcp list",
+        plain: "claude mcp add ip-search-mcp -- npx -y ip-search-mcp\nclaude mcp list",
+      },
+      cursor: {
+        path: "~/.cursor/mcp.json",
+        plain: '{\n  "mcpServers": {\n    "ip-search-mcp": {\n      "command": "npx",\n      "args": ["-y", "ip-search-mcp"]\n    }\n  }\n}',
+        keys: '{\n  "mcpServers": {\n    "ip-search-mcp": {\n      "command": "npx",\n      "args": ["-y", "ip-search-mcp"],\n      "env": {\n        "USPTO_ODP_API_KEY": "...",\n        "USPTO_TSDR_API_KEY": "..."\n      }\n    }\n  }\n}',
+      },
+      desktop: {
+        path: "claude_desktop_config.json",
+        plain: '{\n  "mcpServers": {\n    "ip-search-mcp": {\n      "command": "npx",\n      "args": ["-y", "ip-search-mcp"]\n    }\n  }\n}',
+        keys: '{\n  "mcpServers": {\n    "ip-search-mcp": {\n      "command": "npx",\n      "args": ["-y", "ip-search-mcp"],\n      "env": {\n        "USPTO_ODP_API_KEY": "...",\n        "USPTO_TSDR_API_KEY": "..."\n      }\n    }\n  }\n}',
+      },
+    };
+    let current = "claude";
+    const render = () => {
+      const entry = clients[current];
+      config.textContent = keysToggle && keysToggle.checked ? entry.keys : entry.plain;
+      path.textContent = entry.path;
+    };
+    document.querySelectorAll("[data-client]").forEach((button) => {
+      button.addEventListener("click", () => {
+        current = button.dataset.client;
+        document.querySelectorAll("[data-client]").forEach((other) => {
+          other.setAttribute("aria-pressed", String(other === button));
+        });
+        render();
+      });
+    });
+    if (keysToggle) keysToggle.addEventListener("change", render);
+    render();
+  }
+
+  const buttonText = new WeakMap();
+  document.querySelectorAll("[data-copy], [data-copy-text]").forEach((button) => {
+    buttonText.set(button, button.textContent);
+    button.addEventListener("click", async () => {
+      const selector = button.dataset.copy;
+      const target = selector ? document.querySelector(selector) : null;
+      const text = target ? target.innerText : button.dataset.copyText;
+      try {
+        await navigator.clipboard.writeText(text);
+        button.textContent = "Copied";
+      } catch {
+        button.textContent = "Select and copy";
+      }
+      setTimeout(() => { button.textContent = buttonText.get(button); }, 2400);
+    });
   });
-});
+})();
 </script>
 </body>
 </html>
