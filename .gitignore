@@ -26,4 +26,4 @@ dist/
 .DS_Store
 Thumbs.db
 site/.hallmark/
-.hallmark/
+.hallmark
