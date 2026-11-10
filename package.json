@@ -2,6 +2,17 @@
   "name": "ip-search-mcp",
   "version": "0.1.0",
   "private": true,
+  "description": "MCP server for patent and trademark research and review-only drafting.",
+  "license": "MIT",
+  "author": "Brandon D. Phillips (https://www.bytesbybrandon.com)",
+  "homepage": "https://github.com/bytesbybrandon/ip-search-mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bytesbybrandon/ip-search-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bytesbybrandon/ip-search-mcp/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=24"

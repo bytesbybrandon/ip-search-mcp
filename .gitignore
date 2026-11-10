@@ -5,3 +5,23 @@ dist/
 .cache/
 .docs/
 .reactive/
+
+# Personal agent, editor, and environment files that should never ship
+.claude/
+.kilo/
+.kilocode/
+.remember/
+.plans/
+.cursor/
+.gemini/
+.codex/
+.windsurf/
+.roo/
+.aider*
+.cline*
+.idea/
+.vs/
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db

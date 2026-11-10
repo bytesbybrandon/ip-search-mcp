@@ -6,12 +6,12 @@ This server never asks a tool caller for a key. Keys come from the process envir
 
 Pick one location per use.
 
-**Agents and MCP clients.** Fill the `env` block of the `ip-search-mcp` entry in `~/.agents/mcp.json`, then restart the harness so the server is respawned:
+**Agents and MCP clients.** Fill the `env` block of the `ip-search-mcp` entry in your client configuration, then restart the client so the server is respawned:
 
 ```json
 "ip-search-mcp": {
   "command": "node",
-  "args": ["C:/Users/brand/Desktop/ip-search-mcp/dist/src/index.js"],
+  "args": ["/absolute/path/to/ip-search-mcp/dist/src/index.js"],
   "env": {
     "USPTO_ODP_API_KEY": "your-odp-key",
     "USPTO_TSDR_API_KEY": "your-tsdr-key"
