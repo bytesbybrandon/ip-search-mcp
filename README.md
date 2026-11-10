@@ -133,7 +133,11 @@ pnpm build
 pnpm test
 ```
 
-`pnpm test` runs `node --test` against the compiled output, so build first. Type checking alone:
+`pnpm test` runs `node --test` against the compiled output, so build first.
+
+Run the suite with provider keys unset; the server tests assert the missing-credential path, and CI runs without keys.
+
+Type checking alone:
 
 ```bash
 pnpm check
