@@ -82,7 +82,7 @@ node dist/src/axi/index.js drawings validate ip/drawings/fig-1.svg --description
 node dist/src/axi/index.js index build --from <dir-of-bulk-xml>
 ```
 
-After a local install, `pnpm exec ip-axi` works. `npx -y ip-axi` works only after the package is published.
+Run `npm link` once in the repo to put `ip-axi` on PATH; afterwards the bare command works from any directory. `pnpm exec ip-axi` also works inside the repo. `npx -y ip-axi` works only after the package is published.
 
 Behavior: TOON output, totals on every list, `--fields` for extra columns, `--full` to stop truncation, exit codes 0 success / 1 error / 2 usage, structured errors on stdout with a fixing command, and a `next[]` block after every result.
 
