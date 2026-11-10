@@ -162,6 +162,8 @@ pnpm check
 
 CI runs install, build, check, and test on Node 24.
 
+The ip-axi command reference is checked with `pnpm skill:check`; it fails when a command is missing from `skills/ip-axi/SKILL.md`.
+
 ---
 
 ### Project Structure
