@@ -1,91 +1,179 @@
 # ip-search-mcp
 
-MCP server for patent and trademark research plus review-only drafting of patent application artifacts.
+[![CI](https://github.com/bytesbybrandon/ip-search-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/bytesbybrandon/ip-search-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-It searches official and bulk-derived sources, keeps provenance on every hit, screens concepts for patentability and registrability signals, and produces drawings, claims, specifications, and an attorney packet. It never files, signs, or submits anything.
+MCP server for patent and trademark research plus review-only drafting of patent application artifacts. It searches official and bulk-derived sources, keeps provenance on every hit, screens concepts for patentability and registrability signals, and produces drawings, claims, specifications, and an attorney packet. It never files, signs, or submits anything.
 
-## Status
+---
 
-Working: ODP file wrapper, TSDR lookup, EPO OPS, local SQLite FTS index, 37 CFR 1.84 drawing generation and validation, claim parsing and linting, disclosure-clock arithmetic, concept assessment, attorney packet assembly.
+### Key Features
 
-Opt-in only: Patent Public Search and the Trademark Search backend. Both are undocumented USPTO surfaces with no published contract; enable with `IP_ALLOW_UNOFFICIAL=1` only if you accept that risk.
+* **Official provider search:** ODP file wrapper, TSDR status, and EPO OPS, with provenance on every hit.
+* **Local index:** SQLite FTS5 index built over USPTO bulk XML.
+* **Drawing compliance:** 37 CFR 1.84 SVG generation and validation with citations.
+* **Drafting aids:** claim parsing and linting, specification assembly, disclosure-clock arithmetic, and concept assessment.
+* **Attorney packet:** review packet assembly that reports gaps instead of inventing content.
+* **Opt-in surfaces:** Patent Public Search and the Trademark Search backend behind `IP_ALLOW_UNOFFICIAL=1`, labeled `undocumented: true`.
 
-## Quickstart
+The full tool list is in [docs/TOOLS.md](docs/TOOLS.md).
+
+### Tech Stack
+
+* **Runtime:** Node.js 24 or newer with TypeScript.
+* **MCP:** `@modelcontextprotocol/sdk` over stdio, with `zod` input schemas.
+* **Storage:** `node:sqlite` FTS5 database plus a file cache.
+* **Tools:** pnpm, `tsc`, `node --test`, and GitHub Actions.
+
+### Table of Contents
+
+1. [Getting Started](#getting-started)
+2. [Usage](#usage)
+3. [Running Tests](#running-tests)
+4. [Project Structure](#project-structure)
+5. [Contributing](#contributing)
+6. [License](#license)
+
+---
+
+### Getting Started
+
+#### Prerequisites
+
+* Node.js 24 or newer.
+* pnpm 10.
+
+#### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/bytesbybrandon/ip-search-mcp.git
+   cd ip-search-mcp
+   ```
+2. **Install dependencies:**
+   ```bash
+   pnpm install --frozen-lockfile
+   ```
+3. **Build:**
+   ```bash
+   pnpm build
+   ```
+
+#### Environment Setup
+
+No keys are required to start. Without them, keyed tools return a `CREDENTIAL_MISSING` error with setup instructions, and unkeyed sources remain available.
+
+Keys come from the process environment. A local `.env` file is not loaded automatically; pass it explicitly with `node --env-file=.env dist/src/index.js`. `.env.example` lists every variable and holds no values.
+
+See [docs/CREDENTIALS.md](docs/CREDENTIALS.md) for how to obtain each provider key and how keys are isolated.
+
+Check what is configured without printing any value:
 
 ```bash
-pnpm install
-pnpm build
-node dist/src/index.js --help
+node dist/src/index.js status
 ```
 
-Register it with an MCP client over stdio:
+---
+
+### Usage
+
+#### Running Locally
+
+Start the MCP server over stdio:
+
+```bash
+node dist/src/index.js
+```
+
+MCP clients normally spawn the server themselves. Register it in the client config:
 
 ```json
 {
   "mcpServers": {
     "ip-search-mcp": {
       "command": "node",
-      "args": ["C:/Users/brand/Desktop/ip-search-mcp/dist/src/index.js"],
+      "args": ["/absolute/path/to/ip-search-mcp/dist/src/index.js"],
       "env": {
-        "USPTO_ODP_API_KEY": "...",
-        "USPTO_TSDR_API_KEY": "..."
+        "USPTO_ODP_API_KEY": "",
+        "USPTO_TSDR_API_KEY": ""
       }
     }
   }
 }
 ```
 
-No keys are required to run; without them keyed tools return a `CREDENTIAL_MISSING` error with setup instructions, and unkeyed sources are what remain.
+Replace the path with your clone location. Empty values are treated as unset.
 
-Where keys go, and how to verify them without printing their values:
+The same binary also exposes CLI commands:
+
+```bash
+node dist/src/index.js --help
+node dist/src/index.js status
+node dist/src/index.js rules
+```
+
+#### Code Example / API Reference
+
+`status` reports provider configuration and index state, and never prints a key:
 
 ```bash
 node dist/src/index.js status
 ```
 
-See `CREDENTIALS.md` for the MCP `env` block, shell variables, and `--env-file`.
+The output lists each provider with `configured`, `required`, and `host`, plus `allowUnofficial` and the index state.
 
-## Tools
+Every tool, its inputs, and whether it writes a file is documented in [docs/TOOLS.md](docs/TOOLS.md). Building a local search index is documented in [docs/LOCAL-INDEX.md](docs/LOCAL-INDEX.md).
 
-| Tool | Reads | Writes | Notes |
-|------|-------|--------|-------|
-| `credential_status` | yes | no | Provider table and required env vars |
-| `concept_assessment` | yes | no | 101 screen, CPC/Nice guesses, closest hits, distinctiveness band |
-| `patents_search` | yes | no | ODP, OPS, local index, opt-in PPUBS |
-| `patent_get` | yes | no | File wrapper metadata, continuity, bibliographic data |
-| `patent_documents` | yes | no | ODP prosecution document list |
-| `patent_family` | yes | no | EPO OPS family |
-| `trademarks_search` | yes | no | Candidates only; hydrate with `trademark_get` |
-| `trademark_get` | yes | no | Authoritative TSDR status |
-| `trademark_documents` | yes | no | TSDR documents and bundle PDF |
-| `prior_art_report` | yes | no | Multi-query report with provenance and gaps |
-| `drawing_spec` | no | optional file | Compliant SVG sheet |
-| `drawing_validate` | yes | no | 37 CFR 1.84 findings with citations |
-| `drawing_rules` | yes | no | Encoded rules and eCFR source |
-| `application_draft` | no | optional file | Specification in examiner-expected order |
-| `claims_draft` | no | no | Independent claim from supplied elements |
-| `application_lint` | yes | no | Claim, abstract, and title checks |
-| `disclosure_review` | yes | no | 102(b)(1) grace clock |
-| `attorney_packet` | yes | optional file | Review packet |
-| `index_build` | yes | yes | Local FTS5 index over bulk XML |
+---
 
-## Local index
+### Running Tests
 
 ```bash
-node dist/src/index.js index build --from <dir-of-xml> --db ~/.cache/ip-search-mcp/ip-index.sqlite
-node dist/src/index.js index status
+pnpm build
+pnpm test
 ```
 
-Bulk XML comes from the ODP bulk data directory (patent grants, published applications, trademark daily XML). The ingest is best-effort over the documented field names; verify field mapping against the USPTO data dictionary for the snapshot you use.
+`pnpm test` runs `node --test` against the compiled output, so build first. Type checking alone:
 
-## Documentation
+```bash
+pnpm check
+```
 
-- `ARCHITECTURE.md`: data flow, provider boundaries, provenance, caching, rate limits.
-- `CREDENTIALS.md`: how to obtain each key and how keys are isolated.
-- `LIMITS.md`: what no tool can do, and which surfaces carry terms-of-use risk.
+CI runs install, build, check, and test on Node 24.
 
-## Legal
+---
+
+### Project Structure
+
+```text
+src/
+  index.ts        entry point: CLI or stdio server
+  server.ts       tool registration, input schemas, output formatting
+  cli.ts          status, rules, and index commands
+  config.ts       environment parsing and credential state
+  http.ts         fetch, retry, rate limit, cache, host check
+  domain/         assessment, claims, disclosure, drawings, spec
+  providers/      ODP, TSDR, EPO OPS, PPUBS, tmsearch, local index
+  numbers.ts      patent and trademark identifier normalization
+  errors.ts       typed errors
+  types.ts        shared types
+test/             node --test suites and XML fixtures
+docs/             architecture, credentials, limits, tools, local index
+.github/          community files and CI
+```
+
+Component boundaries and data flow are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). What no tool can do, and which surfaces carry terms-of-use risk, is in [docs/LIMITS.md](docs/LIMITS.md).
+
+---
+
+### Contributing
+
+Contributions are welcome. Read [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md), then fork the repository, branch from `main`, make a focused change with tests, run the checks above, and open a pull request.
+
+---
+
+### License
+
+MIT. See [LICENSE](LICENSE).
 
 Not legal advice. This server produces research and drafts for review by a licensed patent or trademark practitioner. No output is a filing, an opinion of patentability, a clearance opinion, or a freedom-to-operate analysis.
-
-Companion reactive skill: `ip-filing-prep` in `~/Desktop/skills/ip-filing-prep`.
