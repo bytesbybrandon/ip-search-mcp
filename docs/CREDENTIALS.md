@@ -111,6 +111,7 @@ Both surfaces have no published contract, can change shape without notice, and s
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `IP_CACHE_DIR` | `~/.cache/ip-search-mcp` | File cache |
+| `IP_CACHE_MAX_MB` | `300` | Cache size cap in megabytes; when the cache grows past it, the oldest entries are deleted first. An expired entry is deleted when it is read |
 | `IP_INDEX_DB` | `~/.cache/ip-search-mcp/ip-index.sqlite` | Local FTS index |
 | `IP_TIMEOUT_MS` | `30000` | Per-request timeout |
 | `IP_MAX_RETRIES` | `2` | Retry count for 429, 5xx, and network errors |

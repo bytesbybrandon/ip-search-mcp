@@ -55,7 +55,7 @@ export interface OdpWrapper {
   grantDocumentMetaData?: OdpDocumentMeta;
   pgpubDocumentMetaData?: OdpDocumentMeta;
   patentTermAdjustmentData?: { adjustmentTotalQuantity?: number };
-  assignmentBag?: Array<{ assignmentRecordedDate?: string; assigneeBag?: Array<{ assigneeNameText?: string }> }>;
+  assignmentBag?: Array<{ assignmentRecordedDate?: string; conveyanceText?: string; assigneeBag?: Array<{ assigneeNameText?: string }> }>;
 }
 
 interface OdpSearchResponse {
@@ -437,9 +437,17 @@ export async function examinerForwardCitations(patentNumber: string, rows = 25):
   return [...new Set((result.data.response?.docs ?? []).map((doc) => doc.patentApplicationNumber).filter((value): value is string => Boolean(value)))];
 }
 
-/** The most recent recorded assignee, else the first applicant. Perf: P0 · O(assignments) · CRAP <= 10 (CC 3). */
+/** Conveyances that record a lien or a licence, not a change of ownership. */
+const NOT_OWNERSHIP = /security|licen[cs]e|\blien\b|collateral|pledge|mortgage|release/i;
+
+/**
+ * The most recent recorded assignee of an ownership conveyance (security
+ * interests, licences, and releases are skipped), else the first applicant.
+ * Perf: P0 · O(assignments) · CRAP <= 10 (CC 4).
+ */
 export function currentOwner(wrapper: OdpWrapper): string | undefined {
   const latest = [...(wrapper.assignmentBag ?? [])]
+    .filter((entry) => !NOT_OWNERSHIP.test(entry.conveyanceText ?? ""))
     .sort((a, b) => (b.assignmentRecordedDate ?? "").localeCompare(a.assignmentRecordedDate ?? ""))
     .find((entry) => entry.assigneeBag?.[0]?.assigneeNameText);
   return latest?.assigneeBag?.[0]?.assigneeNameText ?? wrapper.applicationMetaData?.applicantBag?.[0]?.applicantNameText;

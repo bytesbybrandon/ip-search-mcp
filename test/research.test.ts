@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   bestPassage,
+  documentIndex,
   generateQueries,
   indexText,
   keyTerms,
@@ -15,7 +16,7 @@ import {
 } from "../src/domain/relevance.js";
 import { estimateTerm } from "../src/domain/term.js";
 import { arxivQuery, parseArxivFeed } from "../src/providers/arxiv.js";
-import { cpcQuery, parseFullTextXml } from "../src/providers/odp.js";
+import { cpcQuery, currentOwner, parseFullTextXml } from "../src/providers/odp.js";
 import { abstractFromIndex } from "../src/providers/openalex.js";
 import { mapLimit, priorArtSearch, topCpc } from "../src/research.js";
 import { parseRegQuery } from "../src/util/winenv.js";
@@ -255,4 +256,47 @@ test("rate limiter spaces requests by the minimum interval", async () => {
   }));
   stamps.sort((a, b) => a - b);
   assert.ok(stamps[1]! - stamps[0]! >= 55 && stamps[2]! - stamps[1]! >= 55, `stamps ${stamps.join(",")}`);
+});
+
+test("term estimate: continuity caveats match what was done", () => {
+  const base = { filingDate: "2018-05-14", grantDate: "2020-01-07", status: "Patented Case", events: [], today: "2026-11-11" };
+  const unset = estimateTerm(base);
+  assert.ok(unset.caveats.some((line) => /Continuity was not checked/.test(line)));
+  const checked = estimateTerm({ ...base, continuity: "checked" });
+  assert.ok(!checked.caveats.some((line) => /Continuity was not checked/.test(line)));
+  assert.ok(checked.basis.some((line) => /No earlier non-provisional parent found/.test(line)));
+  const failed = estimateTerm({ ...base, continuity: "failed" });
+  assert.ok(failed.caveats.some((line) => /continuity lookup failed.*may end earlier/.test(line)));
+  assert.ok(!failed.basis.some((line) => /No earlier non-provisional parent/.test(line)));
+  const withParent = estimateTerm({ ...base, continuity: "checked", earliestNonProvisionalDate: "2014-09-30" });
+  assert.ok(!withParent.basis.some((line) => /No earlier non-provisional parent/.test(line)));
+  assert.equal(withParent.estimatedExpiry, "2034-09-30");
+});
+
+test("current owner skips security interests, licences, and releases", () => {
+  const bag = [
+    { assignmentRecordedDate: "2019-03-01", conveyanceText: "ASSIGNMENT OF ASSIGNORS INTEREST (SEE DOCUMENT FOR DETAILS).", assigneeBag: [{ assigneeNameText: "Company B" }] },
+    { assignmentRecordedDate: "2023-01-10", conveyanceText: "SECURITY INTEREST (SEE DOCUMENT FOR DETAILS).", assigneeBag: [{ assigneeNameText: "Example Bank" }] },
+    { assignmentRecordedDate: "2024-02-02", conveyanceText: "NON-EXCLUSIVE LICENSE", assigneeBag: [{ assigneeNameText: "Licensee" }] },
+    { assignmentRecordedDate: "2024-05-05", conveyanceText: "RELEASE BY SECURED PARTY", assigneeBag: [{ assigneeNameText: "Company B" }] },
+  ];
+  const applicantBag = [{ applicantNameText: "Original Inventor" }];
+  assert.equal(currentOwner({ assignmentBag: bag, applicationMetaData: { applicantBag } }), "Company B");
+  assert.equal(currentOwner({ assignmentBag: bag.slice(1, 3), applicationMetaData: { applicantBag } }), "Original Inventor", "only lien and licence records: fall back to the applicant");
+  assert.equal(currentOwner({ assignmentBag: [{ assignmentRecordedDate: "2020-01-01", assigneeBag: [{ assigneeNameText: "No Conveyance Text" }] }] }), "No Conveyance Text", "a record without a conveyance description is taken as before");
+});
+
+test("ranking reuses a document's tokens and stems: the same objects rank the same, and boolean matching reads the same words", () => {
+  const terms = keyTerms(SENSOR, 6);
+  const documents = [
+    { id: "claims", fields: { title: "Sensor housing", claims: "An optical sensor that recalibrates against a sealed reference surface when drift exceeds a threshold." } },
+    { id: "mentions", fields: { title: "Camera module", body: "An optical sensor may drift." } },
+  ];
+  const first = rankDocuments(documents, terms);
+  assert.deepEqual(rankDocuments(documents, terms), first);
+  assert.deepEqual(rankDocuments(documents.map((doc) => ({ ...doc })), terms), first, "fresh copies rank identically");
+  assert.equal(stem("calibrating"), stem("calibrating"));
+  assert.equal(matchesAll(parseBoolean('"sealed reference surface" AND drift AND camera'), documentIndex(documents[0]!)), false);
+  assert.equal(matchesAll(parseBoolean('"sealed reference surface" AND drift NOT camera'), documentIndex(documents[0]!)), true);
+  assert.equal(matchesAll(parseBoolean("camera AND optical"), documentIndex(documents[1]!)), true);
 });

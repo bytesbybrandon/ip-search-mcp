@@ -118,6 +118,9 @@ function sanitizedHeaders(headers: Record<string, string>): Record<string, strin
   return out;
 }
 
+/** A provider that asks for a longer wait than this is skipped, not waited for, so one source cannot stall a search. */
+const MAX_RETRY_WAIT_MS = 30_000;
+
 function retryAfterMs(response: Response): number | undefined {
   const raw = response.headers.get("retry-after");
   if (!raw) return undefined;
@@ -156,7 +159,7 @@ async function perform(
 
       if (response.status === 429 || response.status >= 500) {
         const waitMs = retryAfterMs(response) ?? Math.min(8000, 250 * 2 ** attempt);
-        if (attempt < retries) {
+        if (attempt < retries && waitMs <= MAX_RETRY_WAIT_MS) {
           await delay(waitMs);
           continue;
         }
@@ -209,7 +212,8 @@ async function interpret(
     });
   }
   if (response.status === 429) {
-    throw new IpError("RATE_LIMITED", `${options.provider} rate limit exceeded`, {
+    const wait = retryAfterMs(response);
+    throw new IpError("RATE_LIMITED", `${options.provider} rate limit exceeded${wait === undefined ? "" : ` (asked to wait ${Math.ceil(wait / 1000)} s)`}`, {
       provider: options.provider,
       status: 429,
       hint: "Wait for the provider window to reset. TSDR allows 60/min, 4/min for PDF and ZIP.",

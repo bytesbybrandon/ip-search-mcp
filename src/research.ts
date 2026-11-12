@@ -9,8 +9,8 @@ import type { Provenance } from "./http.js";
 import { parsePatentNumber } from "./numbers.js";
 import {
   bestPassage,
+  documentIndex,
   generateQueries,
-  indexText,
   keyTerms,
   matchesAll,
   parseBoolean,
@@ -104,6 +104,8 @@ interface PatentEntry {
   foundBy: Set<string>;
   full?: odp.FullText;
   fullSource?: "grant" | "publication";
+  /** Built once per entry so ranking reuses its tokens; dropped when full text arrives. */
+  doc?: RankDocument;
   provenance: Provenance;
 }
 
@@ -114,7 +116,7 @@ function patentId(wrapper: odp.OdpWrapper): string {
 
 function patentDoc(id: string, entry: PatentEntry): RankDocument {
   const full = entry.full;
-  return {
+  entry.doc ??= {
     id,
     fields: {
       title: full?.title ?? entry.wrapper.applicationMetaData?.inventionTitle,
@@ -123,6 +125,15 @@ function patentDoc(id: string, entry: PatentEntry): RankDocument {
       body: full?.description,
     },
   };
+  return entry.doc;
+}
+
+/** A Google Patents page for grants and published applications; Patent Center for an unpublished application. */
+function patentUrl(wrapper: odp.OdpWrapper, full?: odp.FullText): string | undefined {
+  const number = wrapper.applicationMetaData?.patentNumber;
+  if (number) return `https://patents.google.com/patent/US${number}`;
+  if (full?.documentNumber) return `https://patents.google.com/patent/US${full.documentNumber}${full.kind ?? ""}`;
+  return wrapper.applicationNumberText ? `https://patentcenter.uspto.gov/applications/${wrapper.applicationNumberText}` : undefined;
 }
 
 function addWrappers(pool: Map<string, PatentEntry>, wrappers: odp.OdpWrapper[], via: string, provenance: Provenance): string[] {
@@ -145,6 +156,7 @@ async function hydrate(entries: PatentEntry[], notes: string[]): Promise<void> {
       if (fetched) {
         entry.full = fetched.text;
         entry.fullSource = fetched.source;
+        entry.doc = undefined;
       }
     } catch (error) {
       notes.push(`full text for ${entry.wrapper.applicationNumberText} failed: ${message(error)}`);
@@ -258,9 +270,18 @@ async function patentLeg(
       }
     }
     try {
-      const citing = (await mapLimit(leaders.slice(0, 3), 3, (entry) => {
+      const citing = (await mapLimit(leaders.slice(0, 3), 3, async (entry) => {
         const number = entry.wrapper.applicationMetaData?.patentNumber;
-        return number ? odp.examinerForwardCitations(number).catch(() => [] as string[]) : Promise.resolve([] as string[]);
+        if (!number) return [];
+        const query = `examiner citations of US${number}`;
+        try {
+          const applications = await odp.examinerForwardCitations(number);
+          runs.push({ source: "odp", query, count: applications.length });
+          return applications;
+        } catch (error) {
+          runs.push({ source: "odp", query, count: 0, error: message(error) });
+          return [];
+        }
       })).flat();
       const fresh = [...new Set(citing)].filter((application) => ![...pool.values()].some((entry) => entry.wrapper.applicationNumberText === application)).slice(0, 25);
       if (fresh.length > 0) {
@@ -353,7 +374,7 @@ export async function priorArtSearch(input: SearchInput): Promise<SearchOutput> 
       title: doc.fields.title ?? "(untitled)",
       date: metaData.grantDate ?? metaData.earliestPublicationDate ?? metaData.filingDate,
       owner: odp.currentOwner(entry.wrapper),
-      url: `https://patents.google.com/patent/${metaData.patentNumber ? `US${metaData.patentNumber}` : (entry.full?.documentNumber ? `US${entry.full.documentNumber}` : id)}`,
+      url: patentUrl(entry.wrapper, entry.full),
       status: metaData.applicationStatusDescriptionText,
       textRead: entry.full ? "claims" : "title",
       foundBy: [...entry.foundBy],
@@ -382,12 +403,13 @@ export async function priorArtSearch(input: SearchInput): Promise<SearchOutput> 
   // orders of magnitude, so BM25 is normalized within each group. The merged
   // score adds how much of the description's term weight a document covers,
   // which a short repository blurb cannot fake.
+  const docById = new Map(documents.map((doc) => [doc.id, doc]));
   const groupOf = (id: string): string => (pool.has(id) ? "patent" : meta.get(id)?.source === "code" ? "code" : "literature");
   const ranked = ["patent", "literature", "code"].flatMap((group) => {
     const results = rankDocuments(documents.filter((doc) => groupOf(doc.id) === group), rankTerms);
     const top = results[0]?.score || 1;
     return results.map((result) => {
-      const index = clausesPerQuery.length > 0 ? indexText(texts.get(result.id) ?? "") : undefined;
+      const index = clausesPerQuery.length > 0 ? documentIndex(docById.get(result.id)!) : undefined;
       const matchedQueries = index ? clausesPerQuery.filter((entry) => matchesAll(entry.clauses, index)).map((entry) => entry.query) : [];
       let score = 0.5 * weightedCoverage(rankTerms, result.matched) + 0.5 * (result.score / top);
       // An explicit boolean query that the document's own text does not satisfy halves its score.
@@ -449,6 +471,8 @@ export interface PatentReading {
   citedUsCount: number;
   textSource?: "grant" | "publication";
   why?: string;
+  /** How the number was read, when more than one reading was possible. */
+  note?: string;
   url?: string;
   provenance: Provenance[];
 }
@@ -458,7 +482,7 @@ export interface PatentReading {
  * values are ambiguous (see numbers.ts); a grant reading is tried first.
  * Perf: P1 · 1-2 requests · CRAP <= 10 (CC 4).
  */
-async function wrapperFor(identifier: string): Promise<odp.OdpWrapper | undefined> {
+async function wrapperFor(identifier: string): Promise<{ wrapper: odp.OdpWrapper; note?: string } | undefined> {
   const parsed = parsePatentNumber(identifier);
   if (parsed.kind === "publication" || parsed.kind === "pct") {
     throw new IpError("INVALID_INPUT", `${identifier} is a ${parsed.kind} number`, { hint: "Pass a US grant number or an application number." });
@@ -466,7 +490,9 @@ async function wrapperFor(identifier: string): Promise<odp.OdpWrapper | undefine
   const readings = parsed.kind === "ambiguous" ? parsed.alternatives.map((entry) => entry.kind) : [parsed.kind];
   for (const kind of readings.includes("grant") ? ["grant", ...readings.filter((k) => k !== "grant")] : readings) {
     const found = kind === "grant" ? (await odp.byPatentNumbers([parsed.digits]))[0] : (await odp.searchTitles(`applicationNumberText:${parsed.digits}`, 1)).wrappers[0];
-    if (found) return found;
+    if (!found) continue;
+    const other = parsed.alternatives.find((entry) => entry.kind !== kind);
+    return { wrapper: found, note: other ? `${identifier} fits both a grant and an application number; read as the ${kind}. Pass ${other.display} to read the ${other.kind}.` : undefined };
   }
   return undefined;
 }
@@ -483,28 +509,33 @@ export async function readPatent(identifier: string, description?: string): Prom
       hint: "Create a key at https://data.uspto.gov (Manage API Key) and set USPTO_ODP_API_KEY.",
     });
   }
-  const wrapper = await wrapperFor(identifier);
-  if (!wrapper) throw new IpError("NOT_FOUND", `no USPTO record for ${identifier}`, { provider: "odp", hint: "Pass a US patent number (9765584) or an application number (15/234,567)." });
+  const resolved = await wrapperFor(identifier);
+  if (!resolved) throw new IpError("NOT_FOUND", `no USPTO record for ${identifier}`, { provider: "odp", hint: "Pass a US patent number (9765584) or an application number (15/234,567)." });
+  const { wrapper } = resolved;
   const meta = wrapper.applicationMetaData ?? {};
   const provenance: Provenance[] = [];
   const full = await odp.fullTextFor(wrapper);
   if (full) provenance.push(full.provenance);
   let earliest: string | undefined;
-  try {
-    earliest = wrapper.applicationNumberText ? await odp.earliestNonProvisional(wrapper.applicationNumberText) : undefined;
-  } catch {
-    earliest = undefined;
+  let continuity: "checked" | "failed" | undefined;
+  if (wrapper.applicationNumberText) {
+    try {
+      earliest = await odp.earliestNonProvisional(wrapper.applicationNumberText);
+      continuity = "checked";
+    } catch {
+      continuity = "failed";
+    }
   }
   const term = estimateTerm({
     status: meta.applicationStatusDescriptionText,
     applicationType: meta.applicationTypeCode ?? meta.applicationTypeLabelName,
     filingDate: meta.filingDate,
     earliestNonProvisionalDate: earliest,
+    continuity,
     grantDate: meta.grantDate,
     ptaDays: wrapper.patentTermAdjustmentData?.adjustmentTotalQuantity,
     events: (wrapper.eventDataBag ?? []).map((event) => ({ date: event.eventDate, description: event.eventDescriptionText })),
   });
-  if (earliest === undefined && wrapper.applicationNumberText) term.basis.push("No earlier non-provisional parent found in ODP continuity data.");
   const terms = description ? keyTerms(description, 12) : [];
   const independentClaims = (full?.text.claims ?? []).filter((claim) => claim.independent).map((claim) => {
     const stems = new Set(claim.text.toLowerCase().split(/\W+/).map(stem));
@@ -534,7 +565,8 @@ export async function readPatent(identifier: string, description?: string): Prom
       best && terms.length > 0
         ? `Claim ${best.number} shares ${best.shared.length} of ${terms.length} key terms (${best.shared.join(", ") || "none"}); not in that claim: ${best.notInClaim.join(", ") || "none"}. Term overlap is a pointer for a human read, not an element-by-element comparison.`
         : undefined,
-    url: `https://patents.google.com/patent/${id.startsWith("US-APP-") ? id.slice(7) : id}`,
+    note: resolved.note,
+    url: patentUrl(wrapper, full?.text),
     provenance,
   };
 }

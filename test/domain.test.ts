@@ -118,20 +118,29 @@ test("disclosure screen: limited 12-month graces stay open and close on time; no
   assert.deepEqual(late.jurisdictions.filter((entry) => entry.code !== "US").map((entry) => entry.status), ["closed", "closed"]);
 });
 
-test("disclosure screen: a third-party disclosure gets no 12-month window, only the inventor's own does", () => {
+test("disclosure screen: a third-party disclosure gets no window anywhere, only the inventor's own does", () => {
   const third = assessDisclosure({ disclosureDate: "2026-06-01", byInventor: false, plannedFilingDate: "2026-12-01" });
   const status = (code: string) => third.jurisdictions.find((entry) => entry.code === code);
-  for (const code of ["JP", "KR", "CA", "AU", "BR"]) {
+  for (const code of ["US", "JP", "KR", "CA", "AU", "BR"]) {
     assert.equal(status(code)?.status, "not-excused", code);
     assert.equal(status(code)?.deadline, undefined, code);
     assert.equal(status(code)?.daysRemaining, undefined, code);
-    assert.match(status(code)?.note ?? "", /independent third party is not excused/, code);
+    assert.match(status(code)?.note ?? "", /independent third party/, code);
     assert.ok(status(code)?.citation, `${code} keeps its citation`);
   }
   for (const code of ["EP", "GB", "DE", "FR", "CN", "IN"]) assert.equal(status(code)?.status, "no-grace", code);
-  assert.ok(!third.actions.some((action) => /meet its formalities/.test(action)), "no foreign window is open, so no formalities action");
-  assert.ok(third.actions.some((action) => /derives from the inventor/.test(action)));
+  assert.equal(third.urgency, "barred");
+  assert.equal(third.usDeadline, undefined);
+  assert.equal(third.daysRemaining, undefined);
+  assert.ok(third.jurisdictions.every((entry) => entry.status !== "open"));
+  assert.ok(third.actions.some((action) => /not excused/.test(action) && /102\(b\)\(1\)\(A\)-\(B\)/.test(action)));
+  assert.ok(!third.actions.some((action) => /File a US application|meet its formalities|Calendar the deadline/.test(action)));
 
   const own = assessDisclosure({ disclosureDate: "2026-06-01", byInventor: true, plannedFilingDate: "2026-12-01" });
+  assert.equal(own.jurisdictions.find((entry) => entry.code === "US")?.status, "open");
   assert.equal(own.jurisdictions.find((entry) => entry.code === "JP")?.status, "open");
+  assert.equal(own.usDeadline, "2027-06-01");
+  const unrecorded = assessDisclosure({ disclosureDate: "2026-06-01", plannedFilingDate: "2026-12-01" });
+  assert.equal(unrecorded.jurisdictions.find((entry) => entry.code === "US")?.status, "open");
+  assert.equal(unrecorded.usDeadline, "2027-06-01");
 });

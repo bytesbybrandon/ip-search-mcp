@@ -11,6 +11,8 @@ export interface TermFacts {
   filingDate?: string;
   /** Earliest US non-provisional filing date this application claims the benefit of (continuation, divisional). */
   earliestNonProvisionalDate?: string;
+  /** Whether the continuity lookup behind `earliestNonProvisionalDate` ran: left unset when it was never attempted. */
+  continuity?: "checked" | "failed";
   grantDate?: string;
   ptaDays?: number;
   events?: Array<{ date?: string; description?: string }>;
@@ -40,6 +42,13 @@ function addYears(iso: string, years: number, months = 0, days = 0): string {
   date.setUTCMonth(date.getUTCMonth() + months);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+function continuityNote(facts: TermFacts): { basis?: string; caveat?: string } {
+  if (facts.earliestNonProvisionalDate) return {};
+  if (facts.continuity === "checked") return { basis: "No earlier non-provisional parent found in ODP continuity data." };
+  if (facts.continuity === "failed") return { caveat: "The ODP continuity lookup failed, so a parent non-provisional may have been missed; the real term may end earlier than estimated." };
+  return { caveat: "Continuity was not checked; a parent non-provisional would make the term end earlier." };
 }
 
 /**
@@ -78,7 +87,9 @@ export function estimateTerm(facts: TermFacts): TermEstimate {
     basis.push(
       `20 years from ${start}${facts.earliestNonProvisionalDate ? " (earliest non-provisional in the chain)" : " (this application's filing date)"} plus ${facts.ptaDays ?? 0} days of term adjustment.`,
     );
-    if (!facts.earliestNonProvisionalDate) caveats.push("Continuity was not checked; a parent non-provisional would make the term end earlier.");
+    const note = continuityNote(facts);
+    if (note.basis) basis.push(note.basis);
+    if (note.caveat) caveats.push(note.caveat);
   }
 
   // Plant patents, like designs, owe no maintenance fees (35 U.S.C. 41(b)).

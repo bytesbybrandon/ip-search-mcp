@@ -23,6 +23,7 @@ Environment:
   TMSEARCH_WAF_TOKEN      Optional aws-waf-token cookie for Trademark Search
   IP_INDEX_DB             Local index path (default ${config.indexDbPath})
   IP_CACHE_DIR            Cache directory (default ${config.cacheDir})
+  IP_CACHE_MAX_MB         Cache size cap in MB; oldest entries are evicted first (default 300)
 
 Nothing in this tool files, signs, or submits an application.
 `;

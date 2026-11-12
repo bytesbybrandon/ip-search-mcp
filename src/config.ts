@@ -12,6 +12,8 @@ export interface ProviderEndpoint {
 
 const env = process.env;
 
+const cacheMaxMb = Number(env.IP_CACHE_MAX_MB);
+
 /**
  * Process environment first; on Windows or WSL, fall back to the Windows user
  * environment, read once per process (see util/winenv.ts).
@@ -34,6 +36,7 @@ export const config = {
   timeoutMs: Number(env.IP_TIMEOUT_MS ?? 30_000),
   maxRetries: Number(env.IP_MAX_RETRIES ?? 2),
   cacheDir: env.IP_CACHE_DIR ?? join(homedir(), ".cache", "ip-search-mcp"),
+  cacheMaxBytes: (cacheMaxMb > 0 ? cacheMaxMb : 300) * 1024 * 1024,
   indexDbPath: env.IP_INDEX_DB ?? join(homedir(), ".cache", "ip-search-mcp", "ip-index.sqlite"),
   allowUnofficial,
   providers: {

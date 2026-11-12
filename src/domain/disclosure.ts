@@ -204,11 +204,12 @@ export function assessDisclosure(facts: DisclosureFacts): DisclosureAssessment {
     `${facts.disclosureKind ?? "disclosure"} on ${isoDate(disclosure)}${facts.byInventor === false ? " by someone other than the inventor" : facts.byInventor === true ? " by the inventor" : " by an unrecorded party"}`,
   );
 
+  const thirdParty = facts.byInventor === false;
   const usDeadline = addMonths(disclosure, 12);
   const today = new Date();
   const usDays = daysBetween(today, usDeadline);
   const reference = planned ?? today;
-  const usStatus: JurisdictionBar["status"] = reference > usDeadline ? "closed" : "open";
+  const usStatus: JurisdictionBar["status"] = thirdParty ? "not-excused" : reference > usDeadline ? "closed" : "open";
 
   jurisdictions.push({
     code: "US",
@@ -216,13 +217,11 @@ export function assessDisclosure(facts: DisclosureFacts): DisclosureAssessment {
     rule: "35 U.S.C. 102(b)(1)(A)-(B): one-year grace period from a disclosure by the inventor or one who obtained the subject matter from the inventor",
     citation: "35 U.S.C. 102(b)(1)",
     graceMonths: 12,
-    deadline: isoDate(usDeadline),
-    daysRemaining: usDays,
+    ...(thirdParty ? {} : { deadline: isoDate(usDeadline), daysRemaining: usDays }),
     status: usStatus,
-    note:
-      facts.byInventor === false
-        ? "A third-party disclosure before the inventor's own filing can still bar if it is not excepted by 102(b)(1)(B); treat the third-party date as the trigger."
-        : "The inventor's own disclosure starts the one-year clock.",
+    note: thirdParty
+      ? "A disclosure by an independent third party is prior art and gets no grace period. It is excepted only if it derives from the inventor or follows the inventor's own earlier public disclosure (102(b)(1)(A)-(B)); until that is established, report no window."
+      : "The inventor's own disclosure starts the one-year clock.",
   });
 
   for (const code of facts.jurisdictions ?? DEFAULT_FOREIGN) {
@@ -230,11 +229,14 @@ export function assessDisclosure(facts: DisclosureFacts): DisclosureAssessment {
     jurisdictions.push(foreignBar(code, disclosure, reference, today, facts.byInventor));
   }
 
-  const urgency: DisclosureAssessment["urgency"] =
-    usStatus === "closed" ? "barred" : usDays <= 90 ? "time-critical" : "routine";
+  const urgency: DisclosureAssessment["urgency"] = usStatus !== "open" ? "barred" : usDays <= 90 ? "time-critical" : "routine";
 
   const actions: string[] = [];
-  if (usStatus === "closed") {
+  if (thirdParty) {
+    actions.push(
+      "The disclosure by someone other than the inventor is not excused: absent derivation it is prior art in every jurisdiction and no grace period applies. The only remaining question is whether it derives from the inventor (35 U.S.C. 102(b)(1)(A)-(B)); establish and document that before relying on any grace.",
+    );
+  } else if (usStatus === "closed") {
     actions.push("The one-year US grace period has run from the recorded date; document any earlier conception, diligence, or an earlier priority filing before proceeding.");
   } else {
     actions.push(`File a US application on or before ${isoDate(usDeadline)} to preserve the grace-period benefit.`);
@@ -245,15 +247,11 @@ export function assessDisclosure(facts: DisclosureFacts): DisclosureAssessment {
   if (jurisdictions.some((entry) => entry.status === "open" && entry.code !== "US")) {
     actions.push("Where a foreign 12-month grace applies, meet its formalities (JP and KR: claim the exception and file proof; JP, KR, CA, and AU count back from the national or PCT international filing date, not the US priority date).");
   }
-  if (facts.byInventor === false) {
-    actions.push("Establish whether the third-party disclosure derives from the inventor (35 U.S.C. 102(b)(1)(B)) and document the evidence.");
-  }
-  actions.push("Calendar the deadline with a docketing system; this tool computes dates but does not docket them.");
+  if (!thirdParty) actions.push("Calendar the deadline with a docketing system; this tool computes dates but does not docket them.");
 
   return {
     earliestDisclosure: isoDate(disclosure),
-    usDeadline: isoDate(usDeadline),
-    daysRemaining: usDays,
+    ...(thirdParty ? {} : { usDeadline: isoDate(usDeadline), daysRemaining: usDays }),
     urgency,
     events,
     jurisdictions,

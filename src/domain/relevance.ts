@@ -30,29 +30,38 @@ export function tokenize(text: string): string[] {
     .filter((word) => word.length > 2);
 }
 
+const STEM_RULES: Array<[RegExp, string]> = [
+  [/(encies|ency|ences|ence|ents|ent|ancies|ancy|ances|ance|ants|ant)$/, "en"],
+  [/(ational|ation|ations)$/, "at"],
+  [/(ization|izations|izing|ized|izes|ize)$/, "iz"],
+  [/(ies|ied)$/, "y"],
+  [/(ingly|ing|edly|ed|ers|er|ly|(?<!s)s)$/, ""],
+  [/(ability|ible|able)$/, "ab"],
+  [/(ions|ion)$/, ""],
+  [/(ical|ic|al)$/, ""],
+  [/y$/, ""],
+  [/e$/, ""],
+];
+
+/** Words repeat across documents, so stems are remembered; the table is emptied when it grows large. */
+const STEM_CACHE_LIMIT = 100_000;
+const stemCache = new Map<string, string>();
+
 /**
  * Crude suffix stripper so "invalidation", "invalidates" and "invalidated"
  * share one stem. Not linguistic; good enough to build wildcard queries.
- * Perf: P0 · O(1) · CRAP <= 10 (CC 3).
+ * Perf: P0 · O(1) after the first sight of a word · CRAP <= 10 (CC 4).
  */
 export function stem(word: string): string {
-  const rules: Array<[RegExp, string]> = [
-    [/(encies|ency|ences|ence|ents|ent|ancies|ancy|ances|ance|ants|ant)$/, "en"],
-    [/(ational|ation|ations)$/, "at"],
-    [/(ization|izations|izing|ized|izes|ize)$/, "iz"],
-    [/(ies|ied)$/, "y"],
-    [/(ingly|ing|edly|ed|ers|er|ly|(?<!s)s)$/, ""],
-    [/(ability|ible|able)$/, "ab"],
-    [/(ions|ion)$/, ""],
-    [/(ical|ic|al)$/, ""],
-    [/y$/, ""],
-    [/e$/, ""],
-  ];
+  const known = stemCache.get(word);
+  if (known !== undefined) return known;
   let out = word;
-  for (const [pattern, replacement] of rules) {
+  for (const [pattern, replacement] of STEM_RULES) {
     const stemmed = out.replace(pattern, replacement);
     if (stemmed !== out && stemmed.length >= 3) out = stemmed;
   }
+  if (stemCache.size >= STEM_CACHE_LIMIT) stemCache.clear();
+  stemCache.set(word, out);
   return out;
 }
 
@@ -227,10 +236,13 @@ export interface TextIndex {
   words: Set<string>;
 }
 
+function indexTokens(tokens: string[]): TextIndex {
+  return { normalized: ` ${tokens.join(" ")} `, words: new Set(tokens) };
+}
+
 /** Tokenize a text once. Perf: P0 · O(n) · CRAP <= 10 (CC 1). */
 export function indexText(text: string): TextIndex {
-  const normalized = ` ${tokenize(text).join(" ")} `;
-  return { normalized, words: new Set(normalized.trim().split(" ")) };
+  return indexTokens(tokenize(text));
 }
 
 function alternativeMatches(alternative: string, index: TextIndex): boolean {
@@ -259,6 +271,38 @@ export interface RankDocument {
 
 const FIELD_WEIGHT = { title: 2.5, abstract: 2, claims: 3, body: 1 } as const;
 
+interface Prepared {
+  tokens: string[];
+  stems: Map<string, number>;
+}
+
+/** A document is tokenized and stemmed once, however many times it is ranked or matched. */
+const prepared = new WeakMap<RankDocument, Prepared>();
+
+function prepare(doc: RankDocument): Prepared {
+  const known = prepared.get(doc);
+  if (known) return known;
+  const tokens: string[] = [];
+  const stems = new Map<string, number>();
+  for (const [field, weight] of Object.entries(FIELD_WEIGHT) as Array<[keyof typeof FIELD_WEIGHT, number]>) {
+    const text = doc.fields[field];
+    if (!text) continue;
+    for (const word of tokenize(text)) {
+      tokens.push(word);
+      const key = stem(word);
+      stems.set(key, (stems.get(key) ?? 0) + weight);
+    }
+  }
+  const entry = { tokens, stems };
+  prepared.set(doc, entry);
+  return entry;
+}
+
+/** The words of every field of a document, for boolean matching, without tokenizing it again. */
+export function documentIndex(doc: RankDocument): TextIndex {
+  return indexTokens(prepare(doc).tokens);
+}
+
 export interface RankResult {
   id: string;
   score: number;
@@ -269,29 +313,19 @@ export interface RankResult {
 /**
  * BM25 over the candidate pool with per-field weights. IDF is computed on
  * the pool itself, which is what matters for ordering it.
- * Perf: P1 · O(docs x tokens) · CRAP <= 15 (CC 6, branch coverage >= 80%).
+ * Perf: P1 · O(docs x tokens) first time, O(docs x terms) again · CRAP <= 15 (CC 6, branch coverage >= 80%).
  */
 export function rankDocuments(documents: RankDocument[], terms: KeyTerm[], k1 = 1.2, b = 0.75): RankResult[] {
   if (documents.length === 0 || terms.length === 0) return documents.map((doc) => ({ id: doc.id, score: 0, matched: [], missing: terms.map((t) => t.term) }));
-  const prepared = documents.map((doc) => {
-    const stems = new Map<string, number>();
-    let length = 0;
-    for (const [field, weight] of Object.entries(FIELD_WEIGHT) as Array<[keyof typeof FIELD_WEIGHT, number]>) {
-      const text = doc.fields[field];
-      if (!text) continue;
-      for (const word of tokenize(text)) {
-        const key = stem(word);
-        stems.set(key, (stems.get(key) ?? 0) + weight);
-        length += 1;
-      }
-    }
-    return { doc, stems, length };
+  const ready = documents.map((doc) => {
+    const { tokens, stems } = prepare(doc);
+    return { doc, stems, length: tokens.length };
   });
-  const average = prepared.reduce((sum, entry) => sum + entry.length, 0) / prepared.length || 1;
+  const average = ready.reduce((sum, entry) => sum + entry.length, 0) / ready.length || 1;
   const df = new Map<string, number>();
-  for (const term of terms) df.set(term.stem, prepared.filter((entry) => entry.stems.has(term.stem)).length);
-  const n = prepared.length;
-  return prepared
+  for (const term of terms) df.set(term.stem, ready.filter((entry) => entry.stems.has(term.stem)).length);
+  const n = ready.length;
+  return ready
     .map(({ doc, stems, length }) => {
       let score = 0;
       const matched: string[] = [];

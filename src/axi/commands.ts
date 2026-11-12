@@ -257,10 +257,11 @@ interface Reading {
   owner?: string;
   status?: string;
   grantDate?: string;
-  term: { inForce: string; estimatedExpiry?: string; basis: string[]; maintenance: Array<{ year: number; state: string }> };
+  term: { inForce: string; estimatedExpiry?: string; basis: string[]; caveats: string[]; maintenance: Array<{ year: number; state: string }> };
   claimCount: number;
   independentClaims: Array<{ number: number; text: string; shared: string[]; notInClaim: string[] }>;
   why?: string;
+  note?: string;
   url?: string;
 }
 
@@ -300,8 +301,10 @@ const patentsRead: CommandModule = {
           ["maintenance", reading.term.maintenance.map((fee) => `${fee.year}y:${fee.state}`).join(" ")],
           ["claims", `${reading.claimCount} total, ${reading.independentClaims.length} independent`],
           ["why", reading.why ?? ""],
+          ["number_note", reading.note ?? ""],
         ]),
       );
+      lines.push(emitBlock("term", [...reading.term.basis, ...reading.term.caveats]));
       lines.push(
         emitList(
           "independent",
