@@ -117,3 +117,21 @@ test("disclosure screen: limited 12-month graces stay open and close on time; no
   const late = assessDisclosure({ disclosureDate: "2025-01-15", byInventor: true, plannedFilingDate: "2026-06-01", jurisdictions: ["JP", "AU"] });
   assert.deepEqual(late.jurisdictions.filter((entry) => entry.code !== "US").map((entry) => entry.status), ["closed", "closed"]);
 });
+
+test("disclosure screen: a third-party disclosure gets no 12-month window, only the inventor's own does", () => {
+  const third = assessDisclosure({ disclosureDate: "2026-06-01", byInventor: false, plannedFilingDate: "2026-12-01" });
+  const status = (code: string) => third.jurisdictions.find((entry) => entry.code === code);
+  for (const code of ["JP", "KR", "CA", "AU", "BR"]) {
+    assert.equal(status(code)?.status, "not-excused", code);
+    assert.equal(status(code)?.deadline, undefined, code);
+    assert.equal(status(code)?.daysRemaining, undefined, code);
+    assert.match(status(code)?.note ?? "", /independent third party is not excused/, code);
+    assert.ok(status(code)?.citation, `${code} keeps its citation`);
+  }
+  for (const code of ["EP", "GB", "DE", "FR", "CN", "IN"]) assert.equal(status(code)?.status, "no-grace", code);
+  assert.ok(!third.actions.some((action) => /meet its formalities/.test(action)), "no foreign window is open, so no formalities action");
+  assert.ok(third.actions.some((action) => /derives from the inventor/.test(action)));
+
+  const own = assessDisclosure({ disclosureDate: "2026-06-01", byInventor: true, plannedFilingDate: "2026-12-01" });
+  assert.equal(own.jurisdictions.find((entry) => entry.code === "JP")?.status, "open");
+});

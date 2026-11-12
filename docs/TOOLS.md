@@ -38,7 +38,7 @@ Each result says what was read (`claims`, `abstract`, or `title`), which queries
 
 `hydrate` (default 50) is a hard cap on the full texts read, counted across the first wave and the citation wave; a quarter of it is held back for candidates found by citation. Each full text is one ODP request.
 
-A cold search with the default `hydrate` makes about 75 to 120 ODP requests: 21 generated title queries of one to three pages each, up to 3 class queries, up to `hydrate` full texts, and up to 5 citation lookups. At the 60-per-minute pace that is one and a half to two minutes. Repeat searches read the cache and return in seconds. Lower `hydrate` for a faster first run; `concept_assessment` uses 10 and skips citation expansion.
+A cold search with the default `hydrate` makes about 75 to 120 ODP requests: 21 generated title queries of one to three pages each, up to 3 class queries, up to `hydrate` full texts, and up to 5 citation lookups. At the 60-per-minute pace that is one and a half to two minutes. Repeat searches read the cache and return in seconds. Lower `hydrate` for a faster first run; `concept_assessment` uses 10 and skips citation expansion. The `ip-axi` shell client waits up to 10 minutes for a tool call. An MCP client with a shorter tool timeout (many default to 60 seconds) should raise it for `prior_art_search` and `concept_assessment`, or a cold run will fail on the client side while the server keeps spending request budget.
 
 Search results carry `Provenance` with provider, route, retrieval time, source id, and an `undocumented` flag for the opt-in surfaces. A zero-result search is recorded as a zero-result search, never as evidence of novelty.
 

@@ -33,14 +33,7 @@ function onWindowsHost(): boolean {
   return process.platform === "linux" && (Boolean(process.env.WSL_DISTRO_NAME) || /microsoft/i.test(release()));
 }
 
-/**
- * Run `read` the first time the returned function is called and keep the
- * result for the life of the process. Perf: P0 · O(1) after the first call · CRAP <= 10 (CC 1).
- */
-export function cachedEnv(read: () => Record<string, string>): () => Record<string, string> {
-  let memo: Record<string, string> | undefined;
-  return () => (memo ??= read());
-}
+let memo: Record<string, string> | undefined;
 
 function readRegistry(): Record<string, string> {
   if (!onWindowsHost()) return {};
@@ -62,4 +55,6 @@ function readRegistry(): Record<string, string> {
  * first use. Values stay in memory; they are never logged or written. Set
  * IP_WINDOWS_ENV=0 to disable. Perf: P1 · one `reg query`, then O(1) · CRAP <= 15 (CC 4).
  */
-export const windowsUserEnv = cachedEnv(readRegistry);
+export function windowsUserEnv(): Record<string, string> {
+  return (memo ??= readRegistry());
+}

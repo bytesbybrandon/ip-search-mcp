@@ -3,6 +3,9 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../server.js";
 import { AxiError } from "./errors.js";
 
+/** A cold prior-art search is paced by provider rate limits and takes minutes; the SDK default is 60 s. */
+const REQUEST_TIMEOUT_MS = 10 * 60_000;
+
 let session: Promise<Client> | undefined;
 let live: { client: Client; server: { close(): Promise<void> } } | undefined;
 
@@ -32,7 +35,7 @@ function textOf(content: unknown): string {
 /** Call an MCP tool in-process and return its JSON payload. */
 export async function callTool<T>(name: string, args: Record<string, unknown>): Promise<T> {
   const client = await getClient();
-  const result = await client.callTool({ name, arguments: args });
+  const result = await client.callTool({ name, arguments: args }, undefined, { timeout: REQUEST_TIMEOUT_MS });
   const text = textOf(result.content);
   let payload: unknown;
   try {

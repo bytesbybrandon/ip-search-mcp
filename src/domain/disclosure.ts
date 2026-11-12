@@ -14,7 +14,8 @@ export interface JurisdictionBar {
   graceMonths: number;
   deadline?: string;
   daysRemaining?: number;
-  status: "open" | "closed" | "unknown" | "no-grace";
+  /** `not-excused`: a 12-month grace exists but does not cover a disclosure by someone other than the inventor. */
+  status: "open" | "closed" | "unknown" | "no-grace" | "not-excused";
   note: string;
 }
 
@@ -161,6 +162,14 @@ function foreignBar(code: string, disclosure: Date, reference: Date, today: Date
           : "A US filing does not cure a prior public disclosure here unless a valid priority claim precedes the disclosure.",
     };
   }
+  if (byInventor === false) {
+    return {
+      ...base,
+      graceMonths: rule.graceMonths,
+      status: "not-excused",
+      note: "Grace generally covers the applicant's own disclosure or one derived from the applicant; a disclosure by an independent third party is not excused.",
+    };
+  }
   const deadline = addMonths(disclosure, rule.graceMonths);
   return {
     ...base,
@@ -168,10 +177,7 @@ function foreignBar(code: string, disclosure: Date, reference: Date, today: Date
     deadline: isoDate(deadline),
     daysRemaining: daysBetween(today, deadline),
     status: reference > deadline ? "closed" : "open",
-    note:
-      byInventor === false
-        ? "Grace generally covers the applicant's own disclosure or one derived from the applicant; a disclosure by an independent third party is not excused."
-        : `Counted back from the ${rule.measuredFrom}. Conditions apply; see the rule text.`,
+    note: `Counted back from the ${rule.measuredFrom}. Conditions apply; see the rule text.`,
   };
 }
 

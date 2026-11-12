@@ -876,7 +876,7 @@ export function createServer(): McpServer {
     {
       title: "Screen public-disclosure bars and the grace clock",
       description:
-        "Compute the 35 U.S.C. 102(b)(1) one-year US grace deadline from a recorded disclosure, then apply a cited table of foreign grace provisions: no general grace (EP, GB, DE, FR), narrow exceptions only (CN, IN), and limited 12-month graces with conditions (JP, KR, CA, AU, BR). Date arithmetic only, not legal advice.",
+        "Compute the 35 U.S.C. 102(b)(1) one-year US grace deadline from a recorded disclosure, then apply a cited table of foreign grace provisions: no general grace (EP, GB, DE, FR), narrow exceptions only (CN, IN), and limited 12-month graces with conditions (JP, KR, CA, AU, BR). Each row has a status: open, closed, no-grace, or not-excused (a 12-month grace that does not cover a disclosure by someone other than the inventor, so no deadline is given). Date arithmetic only, not legal advice.",
       annotations: { readOnlyHint: true, openWorldHint: false },
       inputSchema: {
         disclosureDate: z.string().describe("ISO date of the earliest public disclosure"),
