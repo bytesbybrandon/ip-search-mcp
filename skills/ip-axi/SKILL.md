@@ -21,7 +21,7 @@ node <repo>/dist/src/axi/index.js
 
 | Command | Purpose |
 | --- | --- |
-| `prior-art search <description>` | Generated queries over patents, papers, preprints, and code; one ranked list with why each hit overlaps. `--query` for your own boolean queries, `--sources`, `--fields why,url,status` |
+| `prior-art search <description>` | Generated queries over patents, papers, preprints, and code; one ranked list with why each hit overlaps. `--query` for your own boolean queries, `--sources`, `--fields why,url,status,grant`. `date` is the earliest relevant date (a patent's effective filing date, not its grant date); `grant` adds the grant date. See [docs/TOOLS.md](../../docs/TOOLS.md) |
 | `patents read <number...>` | Independent claims, owner, status, estimated expiry, fee state; `--description` adds per-claim overlap |
 | `patents search <query>` | Search across configured providers, `--provider auto\|odp\|ops\|ppubs\|index` |
 | `patents get <number>` | Metadata for a grant, application, publication, or PCT number |

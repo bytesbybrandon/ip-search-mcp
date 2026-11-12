@@ -28,7 +28,7 @@ Every tool is registered by `src/server.ts`. Keyed tools return `CREDENTIAL_MISS
 
 ## Prior-art search
 
-`prior_art_search` takes a plain-language description and generates several narrow queries: the two most weighted terms, each ANDed with the next terms, plus repeated phrases. Or pass your own `queries`; they accept `AND`, `OR`, quoted phrases, and a trailing `*`.
+`prior_art_search` takes a plain-language description and generates several narrow queries: the two most weighted terms, each ANDed with the next terms, plus repeated phrases. Or pass your own `queries`; they accept `AND`, `OR`, `NOT`, quoted phrases, and a trailing `*`.
 
 For patents it searches USPTO Open Data Portal titles, adds the most common CPC classes of the best title hits, and follows citations both ways (references cited by the top hits, and later applications whose examiners cited them; forward citations are examiner citations in office actions only, so that list is partial, and a failed lookup shows up as a run entry with its error). It then reads the full text and claims of the strongest candidates and re-ranks everything by BM25 weighted toward claims. Papers come from OpenAlex, preprints from arXiv, and code from GitHub repository search. Each group is ranked on its own statistics and merged by normalized score and term coverage.
 

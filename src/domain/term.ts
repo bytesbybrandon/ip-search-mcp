@@ -1,7 +1,8 @@
 /**
  * Patent term and in-force estimate from public file-wrapper data. An
- * estimate for triage, not a legal status: terminal disclaimers, term
- * extensions, and reinstatements are not visible here.
+ * estimate for triage, not a legal status: terminal disclaimers and term
+ * extensions are not visible here. A granted late-payment petition is read
+ * as reinstatement (see `estimateTerm`).
  */
 
 export interface TermFacts {

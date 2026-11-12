@@ -9,7 +9,7 @@ Most time in this server is spent waiting on public APIs with published rate lim
 | Tier | Target | Use case | Examples |
 |------|--------|----------|----------|
 | **P0 - Interactive** | < 200 ms | Local work in a tool call | claim parsing, BM25 ranking of a pool, boolean matching, date arithmetic |
-| **P1 - Responsive** | < 2 s cached, < 10 s cold | One provider round trip | `patents_search`, `patent_get`, `patent_read`, `trademark_get` |
+| **P1 - Responsive** | < 2 s cached, < 10 s cold | One to three provider round trips | `patents_search`, `patent_get`, `patent_read`, `trademark_get` |
 | **P2 - Background** | < 10 s cached, about 2 min cold | Many paced provider calls | `prior_art_search`, `prior_art_report`, `concept_assessment` |
 | **P3 - Batch** | minutes | Offline | `index_build` over bulk XML |
 
