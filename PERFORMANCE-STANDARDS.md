@@ -10,10 +10,10 @@ Most time in this server is spent waiting on public APIs with published rate lim
 |------|--------|----------|----------|
 | **P0 - Interactive** | < 200 ms | Local work in a tool call | claim parsing, BM25 ranking of a pool, boolean matching, date arithmetic |
 | **P1 - Responsive** | < 2 s cached, < 10 s cold | One provider round trip | `patents_search`, `patent_get`, `patent_read`, `trademark_get` |
-| **P2 - Background** | < 10 s cached, < 2 min cold | Many paced provider calls | `prior_art_search`, `prior_art_report`, `concept_assessment` |
+| **P2 - Background** | < 10 s cached, about 2 min cold | Many paced provider calls | `prior_art_search`, `prior_art_report`, `concept_assessment` |
 | **P3 - Batch** | minutes | Offline | `index_build` over bulk XML |
 
-Cold P2 time is set by the ODP 60-per-minute bucket: a full prior-art search makes about 30 to 90 requests. Lower it by caching and by reading fewer documents, not by raising the bucket.
+Cold P2 time is set by the provider rate limits in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), not by this server's own work. A default prior-art search makes about 75 to 120 ODP requests (21 title queries of one to three pages, up to 3 class queries, at most `hydrate` full texts across all waves, up to 5 citation lookups), which is why a cold run takes about two minutes; see [docs/TOOLS.md](docs/TOOLS.md). Lower it by caching and by reading fewer documents (`hydrate`), not by raising a limit.
 
 ## Complexity budget
 
@@ -41,17 +41,9 @@ CRAP(m) = comp(m)^2 x (1 - cov(m))^3 + comp(m)
 
 Network orchestration (P2) is covered through its pure parts: query generation, ranking, parsing, and term estimation are tested directly with fixtures; the orchestration is tested for its no-key and failure paths.
 
-## Caching
+## Caching and rate limits
 
-| Data | TTL | Why |
-|------|-----|-----|
-| Issued full text | 30 days | Never changes after issue |
-| Prior-art title, CPC, citation queries | 12 hours | ODP updates daily |
-| Paper, preprint, code searches | 24 hours | Slow-moving and budgeted |
-| `patents_search` | 5 minutes | Interactive exploration |
-| Case status | 1 minute | Status changes matter |
-
-The cache key is a SHA-256 of provider, URL, and body; writes are atomic. Keys are read once per process (environment, then the Windows user environment) and kept in memory only.
+Cache TTLs, the cache key, and the per-provider rate-limit buckets are defined once, in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Keys are read once per process (environment, then the Windows user environment) and kept in memory only.
 
 ## Checklists
 

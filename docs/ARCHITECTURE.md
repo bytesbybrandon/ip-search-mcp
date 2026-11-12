@@ -74,7 +74,7 @@ File cache under `~/.cache/ip-search-mcp`, keyed by a SHA-256 of provider, URL, 
 ## Prior-art pipeline
 
 1. `relevance.generateQueries` turns a description into weighted key terms (stemmed, boilerplate removed) and several narrow queries: the two top terms each ANDed with the next ten, plus repeated phrases.
-2. `research.patentLeg` runs the title queries against ODP, adds the most common CPC symbols of the best title hits as class queries, and reads the full-text XML that ODP links from each file wrapper for a diversified set of candidates (the best titles from every query, then the best overall). It then follows references cited by the top five and examiner citations of the top three, and reads those too.
+2. `research.patentLeg` runs the title queries against ODP, adds the most common CPC symbols of the best title hits as class queries, and reads the full-text XML that ODP links from each file wrapper for a diversified set of candidates (the best titles from every query, then the best overall). It then follows references cited by the top five and examiner citations of the top three, and reads those too. Across both waves it never reads more than `hydrate` full texts.
 3. `research.artLeg` runs the text queries against OpenAlex, arXiv, and GitHub.
 4. Patents, literature, and code are each ranked by BM25 on their own pool (claims weighted highest), normalized to the best hit in their group, and merged with term coverage. Explicit boolean queries are checked against each document's own text.
 5. Every provider failure becomes a run entry with its error; the other sources still return.

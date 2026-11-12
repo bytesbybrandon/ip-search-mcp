@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   bestPassage,
   generateQueries,
+  indexText,
   keyTerms,
   matchesAll,
   parseBoolean,
@@ -58,13 +59,44 @@ test("short stems query both forms instead of a broad prefix", () => {
   assert.equal(wildcard({ term: "lens", stem: "lens", weight: 1 }), "lens");
 });
 
+const positive = (...any: string[]): { any: string[]; not: boolean } => ({ any, not: false });
+const excluded = (...any: string[]): { any: string[]; not: boolean } => ({ any, not: true });
+
 test("boolean queries enforce AND, OR, phrases, and prefixes", () => {
   const clauses = parseBoolean('"reference surface" AND (drift OR offset) AND recalibrat*');
-  assert.deepEqual(clauses, [["reference surface"], ["drift", "offset"], ["recalibrat*"]]);
+  assert.deepEqual(clauses, [positive("reference surface"), positive("drift", "offset"), positive("recalibrat*")]);
   assert.equal(matchesAll(clauses, "The reference surface corrects offset; it recalibrates."), true);
   assert.equal(matchesAll(clauses, "A surface reference corrects offset and recalibrates."), false, "phrase order matters");
   assert.equal(matchesAll(clauses, "The reference surface corrects offset."), false, "every AND clause must match");
-  assert.deepEqual(parseBoolean("optical sensor"), [["optical"], ["sensor"]], "bare words are ANDed");
+  assert.equal(matchesAll(clauses, "A preference surfaces; drift recalibrates."), false, "a phrase matches whole words only");
+  assert.deepEqual(parseBoolean("optical sensor"), [positive("optical"), positive("sensor")], "bare words are ANDed");
+});
+
+test("NOT excludes the next term and the OR alternatives that follow it", () => {
+  const clauses = parseBoolean("sensor NOT camera");
+  assert.deepEqual(clauses, [positive("sensor"), excluded("camera")]);
+  assert.equal(matchesAll(clauses, "An optical sensor measures drift."), true);
+  assert.equal(matchesAll(clauses, "An optical sensor in a camera body."), false, "the excluded word disqualifies");
+  assert.equal(matchesAll(clauses, "A camera."), false, "the positive clause still has to match");
+
+  const chain = parseBoolean("sensor NOT (camera OR lens) housing");
+  assert.deepEqual(chain, [positive("sensor"), excluded("camera", "lens"), positive("housing")]);
+  assert.equal(matchesAll(chain, "A sensor housing with a lens."), false, "every excluded alternative counts");
+  assert.equal(matchesAll(chain, "A sensor housing."), true);
+  assert.deepEqual(parseBoolean("sensor OR NOT camera"), [positive("sensor"), excluded("camera")]);
+  assert.deepEqual(parseBoolean("chatbot NOT AI privacy"), [positive("chatbot"), positive("privacy")], "a dropped short word does not leak the exclusion onto the next term");
+});
+
+test("query terms are matched the way document text is normalized", () => {
+  const hyphen = parseBoolean("self-calibrating AND sensor");
+  assert.equal(matchesAll(hyphen, "A self-calibrating sensor."), true);
+  assert.equal(matchesAll(hyphen, "A self calibrating sensor."), true);
+  const phrase = parseBoolean('"time of flight" AND sensor');
+  assert.equal(matchesAll(phrase, "A time-of-flight sensor."), true, "short words drop out of both sides");
+  assert.equal(matchesAll(parseBoolean("self-calibrat* sensor"), "A self-calibrating sensor."), true, "a prefix applies to the last word of a hyphenated term");
+  assert.equal(matchesAll(parseBoolean("self-calibrat* sensor"), "A calibrating sensor."), false);
+  const index = indexText("The optical sensor drifts.");
+  assert.equal(matchesAll(parseBoolean("optical AND sensor"), index), matchesAll(parseBoolean("optical AND sensor"), "The optical sensor drifts."));
 });
 
 test("claims-weighted ranking puts the document that claims the idea first", () => {
@@ -203,6 +235,13 @@ test("prior-art search without an ODP key reports the setup step and still retur
   assert.ok(result.notes.some((note) => /USPTO_ODP_API_KEY not set/.test(note)));
   assert.ok(result.queries.patent.length > 0);
   await assert.rejects(() => priorArtSearch({}), /description or at least one query/);
+});
+
+test("excluded words are not ranking terms for explicit queries", async () => {
+  const result = await priorArtSearch({ queries: ['"optical sensor" AND drift NOT camera'], sources: ["patents"] });
+  const terms = result.terms.map((entry) => entry.term);
+  assert.ok(terms.includes("sensor") && terms.includes("drift"));
+  assert.ok(!terms.includes("camera"));
 });
 
 test("rate limiter spaces requests by the minimum interval", async () => {

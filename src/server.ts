@@ -173,14 +173,19 @@ async function autoPatentSearch(
 /**
  * Patent hits for a concept screen: generated queries, light hydration, no
  * expansion, so the screen stays quick. Falls back to the provider chain when
- * ODP is not configured. Perf: P2 · about 20 cached requests · CRAP <= 10 (CC 3).
+ * ODP is not configured, or when every ODP run failed and nothing was found.
+ * Perf: P2 · cold, 21 to 63 title pages and at most 10 full texts; seconds when cached · CRAP <= 15 (CC 5).
  */
 async function conceptPatentSearch(concept: string): Promise<{ hits: PatentHit[]; notes: string[] }> {
-  if (!config.providers.odp.key) {
-    const fallback = await autoPatentSearch(generateQueries(concept).patentQueries[0] ?? concept.slice(0, 300), 10, "auto");
-    return { hits: fallback.hits, notes: fallback.notes };
-  }
+  const fallback = async (notes: string[]): Promise<{ hits: PatentHit[]; notes: string[] }> => {
+    const chain = await autoPatentSearch(generateQueries(concept).patentQueries[0] ?? concept.slice(0, 300), 10, "auto");
+    return { hits: chain.hits, notes: [...notes, ...chain.notes] };
+  };
+  if (!config.providers.odp.key) return fallback([]);
   const result = await priorArtSearch({ description: concept, sources: ["patents"], limit: 10, hydrate: 10, expand: false });
+  const failed = result.runs.filter((run) => run.error);
+  const failures = failed.map((run) => `${run.source} "${run.query}" failed: ${run.error}`);
+  if (result.results.length === 0 && failed.length > 0 && failed.length === result.runs.length) return fallback(failures);
   const hits: PatentHit[] = result.results.map((candidate) => ({
     kind: "patent",
     number: candidate.id,
@@ -195,7 +200,7 @@ async function conceptPatentSearch(concept: string): Promise<{ hits: PatentHit[]
     url: candidate.url,
     provenance: candidate.provenance,
   }));
-  return { hits, notes: result.runs.filter((run) => run.error).map((run) => `${run.source} "${run.query}" failed: ${run.error}`) };
+  return { hits, notes: failures };
 }
 
 async function autoTrademarkSearch(
@@ -411,14 +416,14 @@ export function createServer(): McpServer {
     {
       title: "Prior-art search across patents, papers, preprints, and code",
       description:
-        "Give a plain-language description (or explicit boolean queries). Generates several queries, searches USPTO patents (titles, CPC classes, and citation links, then full text and claims), OpenAlex papers, arXiv preprints, and GitHub repositories, and returns one list ranked by relevance with why each hit overlaps. Queries support AND, OR, quoted phrases, and trailing * wildcards. A zero or low score is never evidence of novelty.",
+        "Give a plain-language description (or explicit boolean queries). Generates several queries, searches USPTO patents (titles, CPC classes, and citation links, then full text and claims), OpenAlex papers, arXiv preprints, and GitHub repositories, and returns one list ranked by relevance with why each hit overlaps. Queries support AND, OR, NOT, quoted phrases, and trailing * wildcards. A cold search can make up to about 120 USPTO requests (paced at 60 per minute, so roughly two minutes); repeat searches use the cache, and a lower hydrate makes a first run faster. A zero or low score is never evidence of novelty.",
       annotations: { readOnlyHint: true, openWorldHint: true },
       inputSchema: {
         description: z.string().min(20).optional().describe("Plain-language description of the invention or feature"),
         queries: z.array(z.string().min(2)).max(20).optional().describe("Explicit boolean queries; replaces generated queries"),
         sources: z.array(z.enum(["patents", "papers", "preprints", "code"])).optional().describe("Default: all four"),
         limit: z.number().int().min(1).max(200).optional().describe("Rows returned (default 25)"),
-        hydrate: z.number().int().min(0).max(100).optional().describe("Patent candidates read in full (default 50)"),
+        hydrate: z.number().int().min(0).max(100).optional().describe("Most patent full texts read, across all waves; each read is one USPTO request (default 50)"),
         expand: z.boolean().optional().describe("Expand by CPC class and citations (default true)"),
       },
     },

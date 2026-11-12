@@ -178,55 +178,77 @@ export function plainQuery(query: string): string {
     .trim();
 }
 
-/** One AND clause: any of its alternatives must match. Phrases are exact word sequences; `*` is a prefix. */
-export type Clause = string[];
+/**
+ * One AND clause. Positive: any alternative must match. With `not`: no
+ * alternative may match. Alternatives are normalized like document text (see
+ * `tokenize`); phrases are exact word sequences; `*` is a prefix.
+ */
+export interface Clause {
+  any: string[];
+  not: boolean;
+}
+
+/** A query term in the same form `tokenize` gives document text, so hyphens and short words cannot cause a miss. */
+function normalizeAlternative(token: string): string {
+  const words = tokenize(token).join(" ");
+  return words && token.endsWith("*") ? `${words}*` : words;
+}
 
 /**
- * Parse `"exact phrase" AND term OR other AND prefix*` into AND clauses of
- * OR alternatives. Bare adjacent words are ANDed. Parentheses are ignored.
- * Perf: P0 · O(n) · CRAP <= 10 (CC 7, branch coverage >= 90%).
+ * Parse `"exact phrase" AND term OR other AND prefix* NOT excluded` into AND
+ * clauses of OR alternatives. Bare adjacent words are ANDed; NOT excludes the
+ * next term and any OR alternatives that follow it. Parentheses are ignored.
+ * Perf: P1 · O(n) · CRAP <= 15 (CC 11, branch coverage >= 90%).
  */
 export function parseBoolean(query: string): Clause[] {
-  const tokens = query.match(/"[^"]+"|\S+/g) ?? [];
   const clauses: Clause[] = [];
-  let current: Clause = [];
+  let last: Clause | undefined;
   let pendingOr = false;
-  for (const raw of tokens) {
+  let pendingNot = false;
+  for (const raw of query.match(/"[^"]+"|\S+/g) ?? []) {
     const token = raw.replace(/[()]/g, "");
-    if (!token) continue;
-    if (token === "AND") continue;
-    if (token === "OR") {
-      pendingOr = true;
-      continue;
+    if (token === "OR") pendingOr = true;
+    else if (token === "NOT") pendingNot = true;
+    else if (token && token !== "AND") {
+      const alternative = normalizeAlternative(token.replace(/"/g, "").toLowerCase());
+      if (alternative && pendingOr && last && !pendingNot) last.any.push(alternative);
+      else if (alternative) clauses.push((last = { any: [alternative], not: pendingNot }));
+      pendingOr = false;
+      pendingNot = false;
     }
-    const alternative = token.replace(/"/g, "").toLowerCase().trim();
-    if (!alternative) continue;
-    if (pendingOr || current.length === 0) current.push(alternative);
-    else {
-      clauses.push(current);
-      current = [alternative];
-    }
-    pendingOr = false;
   }
-  if (current.length > 0) clauses.push(current);
   return clauses;
 }
 
-function alternativeMatches(alternative: string, text: string, words: Set<string>): boolean {
-  if (alternative.includes(" ")) return text.includes(alternative);
-  if (alternative.endsWith("*")) {
-    const prefix = alternative.slice(0, -1);
-    for (const word of words) if (word.startsWith(prefix)) return true;
-    return false;
-  }
-  return words.has(alternative);
+/** A document's text, tokenized once, for matching any number of queries. */
+export interface TextIndex {
+  /** Content words joined by single spaces and padded with one space on each side. */
+  normalized: string;
+  words: Set<string>;
 }
 
-/** True when every AND clause has a matching alternative in the text. Perf: P0 · O(clauses x words) · CRAP <= 10 (CC 2). */
-export function matchesAll(clauses: Clause[], text: string): boolean {
+/** Tokenize a text once. Perf: P0 · O(n) · CRAP <= 10 (CC 1). */
+export function indexText(text: string): TextIndex {
   const normalized = ` ${tokenize(text).join(" ")} `;
-  const words = new Set(normalized.trim().split(" "));
-  return clauses.every((clause) => clause.some((alternative) => alternativeMatches(alternative, normalized, words)));
+  return { normalized, words: new Set(normalized.trim().split(" ")) };
+}
+
+function alternativeMatches(alternative: string, index: TextIndex): boolean {
+  const prefix = alternative.endsWith("*");
+  const body = prefix ? alternative.slice(0, -1) : alternative;
+  if (body.includes(" ")) return index.normalized.includes(prefix ? ` ${body}` : ` ${body} `);
+  if (!prefix) return index.words.has(body);
+  for (const word of index.words) if (word.startsWith(body)) return true;
+  return false;
+}
+
+/**
+ * True when every positive clause has a matching alternative in the text and
+ * no excluded alternative does. Perf: P0 · O(clauses x words) · CRAP <= 10 (CC 2).
+ */
+export function matchesAll(clauses: Clause[], text: string | TextIndex): boolean {
+  const index = typeof text === "string" ? indexText(text) : text;
+  return clauses.every((clause) => clause.any.some((alternative) => alternativeMatches(alternative, index)) !== clause.not);
 }
 
 export interface RankDocument {
@@ -288,16 +310,6 @@ export function rankDocuments(documents: RankDocument[], terms: KeyTerm[], k1 = 
       return { id: doc.id, score: Math.round(score * 1000) / 1000, matched, missing };
     })
     .sort((a, b2) => b2.score - a.score || a.id.localeCompare(b2.id));
-}
-
-/**
- * Reciprocal rank fusion: merge ranked id lists from several queries or
- * sources without comparing their raw scores. Perf: P1 · O(total ids) · CRAP <= 10 (CC 2).
- */
-export function fuseRanks(lists: string[][], k = 60): Map<string, number> {
-  const scores = new Map<string, number>();
-  for (const list of lists) list.forEach((id, index) => scores.set(id, (scores.get(id) ?? 0) + 1 / (k + index + 1)));
-  return scores;
 }
 
 /**

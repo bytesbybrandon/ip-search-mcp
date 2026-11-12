@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { config } from "../src/config.js";
 import { createServer } from "../src/server.js";
+import { cachedEnv } from "../src/util/winenv.js";
 
 function textOf(result: unknown): string {
   if (result === null || typeof result !== "object" || !("content" in result)) {
@@ -133,19 +135,34 @@ test("missing credentials produce an actionable error, not a crash", async () =>
   await server.close();
 });
 
-test("concurrent tool calls all complete (no hang under parallel load)", async () => {
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+// The slow path was a key read per call (a PowerShell launch each time). The reader
+// below is deliberately slow and counts its runs; the cached read the server uses
+// (windowsUserEnv is built with cachedEnv) must run it once however many calls overlap.
+test("concurrent tool calls all complete, and a slow key read happens once, not per call", async () => {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const server = createServer();
   await server.connect(serverTransport);
   const client = new Client({ name: "ip-test", version: "1.0.0" });
   await client.connect(clientTransport);
 
-  const calls = [
+  let keyReads = 0;
+  const keys = cachedEnv(() => {
+    keyReads += 1;
+    sleepSync(250);
+    return { USPTO_ODP_API_KEY: "example-value" };
+  });
+  const started = Date.now();
+  const calls: Array<Promise<unknown>> = [
     ...Array.from({ length: 12 }, (_, index) =>
       client.callTool({ name: "disclosure_review", arguments: { disclosureDate: `2026-0${(index % 9) + 1}-01`, byInventor: true } }),
     ),
     ...Array.from({ length: 4 }, () => client.callTool({ name: "credential_status", arguments: {} })),
     ...Array.from({ length: 4 }, () => client.callTool({ name: "patent_read", arguments: { numbers: ["9765584"] } })),
+    ...Array.from({ length: 20 }, async () => keys().USPTO_ODP_API_KEY),
   ];
   let timer: NodeJS.Timeout | undefined;
   const deadline = new Promise<never>((_, reject) => {
@@ -153,13 +170,42 @@ test("concurrent tool calls all complete (no hang under parallel load)", async (
   });
   const results = await Promise.race([Promise.all(calls), deadline]);
   clearTimeout(timer);
-  assert.equal(results.length, 20);
+  assert.equal(keyReads, 1, "the slow key read must run once per process, not once per call");
+  assert.ok(Date.now() - started < 2_000, "one slow read must not hold up the parallel calls");
+  assert.equal(results.length, 40);
+  assert.equal(results[39], "example-value");
   const read = JSON.parse(textOf(results[19])) as { readings: Array<{ ok: boolean; error?: { code?: string } }> };
   assert.equal(read.readings[0]?.ok, false);
   assert.equal(read.readings[0]?.error?.code, "CREDENTIAL_MISSING");
 
   await client.close();
   await server.close();
+});
+
+test("concept_assessment falls back to the provider chain when every ODP run fails", async () => {
+  const realFetch = globalThis.fetch;
+  Object.assign(config.providers.odp, { key: "example-key" });
+  globalThis.fetch = async () => new Response("{}", { status: 400, headers: { "content-type": "application/json" } });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const server = createServer();
+  await server.connect(serverTransport);
+  const client = new Client({ name: "ip-test", version: "1.0.0" });
+  await client.connect(clientTransport);
+  try {
+    const result = await client.callTool({
+      name: "concept_assessment",
+      arguments: { concept: "A handheld optical sensor that recalibrates itself against a sealed reference surface when drift exceeds a threshold." },
+    });
+    assert.notEqual(result.isError, true);
+    const payload = JSON.parse(textOf(result)) as { searchNotes: string[] };
+    assert.ok(payload.searchNotes.some((note) => /^odp .* failed/.test(note)), "the failed ODP runs are reported");
+    assert.ok(payload.searchNotes.some((note) => /^ops skipped/.test(note)), "the fallback chain ran after the ODP runs failed");
+  } finally {
+    globalThis.fetch = realFetch;
+    Object.assign(config.providers.odp, { key: undefined });
+    await client.close();
+    await server.close();
+  }
 });
 
 test("disclosure_review applies the cited foreign grace table over the wire", async () => {

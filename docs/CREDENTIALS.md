@@ -95,7 +95,7 @@ Works without a token at 10 searches a minute. Set `GITHUB_TOKEN` in the process
 
 ## Windows user environment
 
-On Windows, and under WSL, a USPTO, EPO, or OpenAlex variable missing from the process environment is read once per process from the Windows user environment (`reg query HKCU\Environment`, about a tenth of a second). Only those variables are kept, in memory only; `GITHUB_TOKEN` is excluded. Keys set with `setx` or the System dialog then work without restarting the MCP client and without one PowerShell launch per call. Set `IP_WINDOWS_ENV=0` to disable it.
+On Windows, and under WSL, a USPTO, EPO, or OpenAlex variable missing from the process environment is read once per process from the Windows user environment (`reg query HKCU\Environment`, about a tenth of a second). Only those variables are kept, in memory only; `GITHUB_TOKEN` is excluded. Keys set with `setx` or the System dialog then work without restarting the MCP client. The slow path this replaces was a per-call key read that launched PowerShell on every call; a hang under parallel calls was reported but could not be reproduced in the server. Set `IP_WINDOWS_ENV=0` to disable it.
 
 ## Undocumented surfaces (off by default)
 

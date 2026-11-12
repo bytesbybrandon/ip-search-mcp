@@ -12,8 +12,6 @@ export const WINDOWS_ENV_NAMES = [
 // GITHUB_TOKEN is deliberately absent: a personal GitHub token can often write, and
 // search needs none, so it is only taken from the process environment.
 
-let memo: Record<string, string> | undefined;
-
 /**
  * Parse `reg query HKCU\Environment` output, keeping only allowlisted names.
  * Perf: P1 · O(lines) · CRAP <= 15 (CC 4, branch coverage >= 80%).
@@ -36,22 +34,32 @@ function onWindowsHost(): boolean {
 }
 
 /**
- * Read the Windows user environment once per process (WSL or native Windows),
- * so keys set with `setx` or the System dialog are visible without restarting
- * the MCP client and without one PowerShell launch per call. Values stay in
- * memory; they are never logged or written. Set IP_WINDOWS_ENV=0 to disable.
- * Perf: P1 · one `reg query` (about 0.1 s), then O(1) · CRAP <= 15 (CC 4).
+ * Run `read` the first time the returned function is called and keep the
+ * result for the life of the process. Perf: P0 · O(1) after the first call · CRAP <= 10 (CC 1).
  */
-export function windowsUserEnv(): Record<string, string> {
-  if (memo) return memo;
-  memo = {};
-  if (!onWindowsHost()) return memo;
+export function cachedEnv(read: () => Record<string, string>): () => Record<string, string> {
+  let memo: Record<string, string> | undefined;
+  return () => (memo ??= read());
+}
+
+function readRegistry(): Record<string, string> {
+  if (!onWindowsHost()) return {};
   const result = spawnSync(process.platform === "win32" ? "reg" : "reg.exe", ["query", "HKCU\\Environment"], {
     encoding: "utf8",
     timeout: 5_000,
     windowsHide: true,
     stdio: ["ignore", "pipe", "ignore"],
   });
-  if (result.status === 0 && typeof result.stdout === "string") memo = parseRegQuery(result.stdout);
-  return memo;
+  return result.status === 0 && typeof result.stdout === "string" ? parseRegQuery(result.stdout) : {};
 }
+
+/**
+ * The Windows user environment (WSL or native Windows), read once per process
+ * so keys set with `setx` or the System dialog are visible without restarting
+ * the MCP client. The slow path was a per-call key read that launched
+ * PowerShell on every call; a hang under parallel calls was reported but could
+ * not be reproduced in the server. This is one `reg query` (about 0.1 s) on
+ * first use. Values stay in memory; they are never logged or written. Set
+ * IP_WINDOWS_ENV=0 to disable. Perf: P1 · one `reg query`, then O(1) · CRAP <= 15 (CC 4).
+ */
+export const windowsUserEnv = cachedEnv(readRegistry);

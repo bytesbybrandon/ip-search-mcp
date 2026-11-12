@@ -10,6 +10,7 @@ import { parsePatentNumber } from "./numbers.js";
 import {
   bestPassage,
   generateQueries,
+  indexText,
   keyTerms,
   matchesAll,
   parseBoolean,
@@ -162,8 +163,10 @@ export function topCpc(wrappers: odp.OdpWrapper[], max = 3): string[] {
 
 /**
  * Patent leg: title queries, CPC expansion, full-text hydration, citation
- * expansion, then a claims-weighted re-rank. Perf: P2 · about 15-50 ODP
- * requests on a cold cache, seconds when cached · CRAP <= 25 (CC 12).
+ * expansion, then a claims-weighted re-rank. `options.hydrate` caps the full
+ * texts read across both waves. Perf: P2 · on a cold cache 21 to 63 title
+ * pages, up to 3 class queries, at most `hydrate` full-text reads, and up to 5
+ * citation requests; seconds when cached · CRAP <= 25 (CC 12).
  */
 async function patentLeg(
   patentQueries: string[],
@@ -220,7 +223,8 @@ async function patentLeg(
   // Diversify what gets read in full: the best titles from every query (six
   // from a specific query with 50 or fewer hits, three up to 300, two from a
   // broad one), then the best titles overall, so one crowded term cannot take
-  // every slot.
+  // every slot. A quarter of the budget is held back for citation finds.
+  const firstCount = options.hydrate - (options.expand ? Math.floor(options.hydrate / 4) : 0);
   const order = titleRank();
   const position = new Map(order.map((id, index) => [id, index]));
   const picks = new Set<string>();
@@ -230,12 +234,12 @@ async function patentLeg(
     const take = list.total <= 50 ? 6 : list.total <= 300 ? 3 : 2;
     return [...new Set(list.ids)].sort((a, b) => (position.get(a) ?? 0) - (position.get(b) ?? 0)).slice(0, take);
   });
-  for (let round = 0; round < 6; round += 1) for (const list of perList) if (list[round]) picks.add(list[round]!);
+  for (let round = 0; round < 6; round += 1) for (const list of perList) if (list[round] && picks.size < firstCount) picks.add(list[round]!);
   for (const id of order) {
-    if (picks.size >= options.hydrate) break;
+    if (picks.size >= firstCount) break;
     picks.add(id);
   }
-  const firstWave = [...picks].slice(0, Math.min(picks.size, options.hydrate * 2)).map((id) => pool.get(id)!);
+  const firstWave = [...picks].map((id) => pool.get(id)!);
   await hydrate(firstWave, notes);
 
   if (options.expand) {
@@ -270,7 +274,7 @@ async function patentLeg(
     }
     const termStems = new Set(terms.map((term) => term.stem));
     const worth = added.filter((entry) => (entry.wrapper.applicationMetaData?.inventionTitle ?? "").toLowerCase().split(/\W+/).some((word) => termStems.has(stem(word))));
-    await hydrate(worth.slice(0, 15), notes);
+    await hydrate(worth.slice(0, options.hydrate - firstWave.length), notes);
   }
   return pool;
 }
@@ -314,7 +318,9 @@ export async function priorArtSearch(input: SearchInput): Promise<SearchOutput> 
   if (!description && explicit.length === 0) throw new IpError("INVALID_INPUT", "give a description or at least one query");
   const sources = input.sources?.length ? input.sources : [...ALL_SOURCES];
   const generated = generateQueries(description ?? explicit.join(" "));
-  const queryText = explicit.join(" ").replace(/\b(AND|OR|NOT)\b/g, " ").replace(/[*"()]/g, " ");
+  const clausesPerQuery = explicit.map((query) => ({ query, clauses: parseBoolean(query) }));
+  // Excluded (NOT) words are not ranking terms.
+  const queryText = clausesPerQuery.flatMap((entry) => entry.clauses.filter((clause) => !clause.not).flatMap((clause) => clause.any)).join(" ");
   // A user's trailing wildcard (calibrat*) stays a prefix in later CPC queries and in the output.
   const prefixes = new Set([...explicit.join(" ").matchAll(/([a-z0-9-]{3,})\*/gi)].map((match) => match[1]!.toLowerCase()));
   const markPrefix = (term: KeyTerm): KeyTerm => (prefixes.has(term.term) ? { ...term, term: `${term.term}*`, stem: term.term } : term);
@@ -323,7 +329,6 @@ export async function priorArtSearch(input: SearchInput): Promise<SearchOutput> 
   const rankTerms = rankingTerms(description ?? queryText, 30).map(markPrefix);
   const patentQueries = explicit.length > 0 ? explicit : generated.patentQueries;
   const textQueries = explicit.length > 0 ? explicit.slice(0, 3) : generated.textQueries;
-  const clausesPerQuery = explicit.map((query) => ({ query, clauses: parseBoolean(query) }));
   const runs: SearchRun[] = [];
   const notes: string[] = [];
 
@@ -382,8 +387,8 @@ export async function priorArtSearch(input: SearchInput): Promise<SearchOutput> 
     const results = rankDocuments(documents.filter((doc) => groupOf(doc.id) === group), rankTerms);
     const top = results[0]?.score || 1;
     return results.map((result) => {
-      const text = texts.get(result.id) ?? "";
-      const matchedQueries = clausesPerQuery.filter((entry) => matchesAll(entry.clauses, text)).map((entry) => entry.query);
+      const index = clausesPerQuery.length > 0 ? indexText(texts.get(result.id) ?? "") : undefined;
+      const matchedQueries = index ? clausesPerQuery.filter((entry) => matchesAll(entry.clauses, index)).map((entry) => entry.query) : [];
       let score = 0.5 * weightedCoverage(rankTerms, result.matched) + 0.5 * (result.score / top);
       // An explicit boolean query that the document's own text does not satisfy halves its score.
       if (clausesPerQuery.length > 0 && matchedQueries.length === 0) score /= 2;
