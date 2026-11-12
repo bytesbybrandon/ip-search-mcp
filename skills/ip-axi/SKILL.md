@@ -21,6 +21,8 @@ node <repo>/dist/src/axi/index.js
 
 | Command | Purpose |
 | --- | --- |
+| `prior-art search <description>` | Generated queries over patents, papers, preprints, and code; one ranked list with why each hit overlaps. `--query` for your own boolean queries, `--sources`, `--fields why,url,status,grant`. `date` is the earliest relevant date (a patent's effective filing date, not its grant date); `grant` adds the grant date. See [docs/TOOLS.md](../../docs/TOOLS.md) |
+| `patents read <number...>` | Independent claims, owner, status, estimated expiry, fee state; `--description` adds per-claim overlap |
 | `patents search <query>` | Search across configured providers, `--provider auto\|odp\|ops\|ppubs\|index` |
 | `patents get <number>` | Metadata for a grant, application, publication, or PCT number |
 | `patents docs <application>` | File-wrapper documents with codes and download URLs |
@@ -49,11 +51,14 @@ node <repo>/dist/src/axi/index.js
 - Read-only except `index build` and commands that write a file.
 - Nothing files, signs, or submits an application.
 - Search hits carry provider and retrieval time; undocumented providers are labeled.
+- A low or zero prior-art score is never evidence of novelty; expiry and in-force values are estimates.
 - Trademark candidates are not a clearance opinion.
 
 ## Examples
 
 ```bash
+node <repo>/dist/src/axi/index.js prior-art search "A handheld optical sensor that recalibrates against a sealed reference surface when drift exceeds a threshold" --fields why
+node <repo>/dist/src/axi/index.js patents read 9765584 --description @idea.md
 node <repo>/dist/src/axi/index.js patents search "optical sensor calibration" --limit 5
 node <repo>/dist/src/axi/index.js trademarks get 87454105
 node <repo>/dist/src/axi/index.js drawings validate ip/drawings/fig-1.svg --description @ip/specification.md

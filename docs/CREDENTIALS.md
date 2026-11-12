@@ -77,6 +77,26 @@ Used for: worldwide bibliographic data, full text, families, images.
 
 OAuth2 client-credentials token against `ops.epo.org`; the token is cached until shortly before expiry. Usage is governed by the EPO fair use charter.
 
+## OpenAlex (optional key)
+
+Used for: scholarly papers in `prior_art_search`.
+
+Works without a key on a small daily budget shared by everyone on your network address. For a budget of your own, sign in at https://openalex.org/settings/api, create a free key, and set `OPENALEX_API_KEY`. Sent only to `api.openalex.org`, as the `api_key` query parameter; it is removed from provenance.
+
+## arXiv (no key)
+
+Used for: preprints in `prior_art_search`. No key exists. Requests are spaced at least three seconds apart, as the arXiv API terms ask.
+
+## GitHub (optional token)
+
+Used for: public repository search in `prior_art_search`.
+
+Works without a token at 10 searches a minute. Set `GITHUB_TOKEN` in the process or client environment to raise that to 30; a fine-grained token with no permissions is enough, because repository search reads public data. Sent only to `api.github.com`. It is never read from the Windows user environment, where a broader personal token often lives.
+
+## Windows user environment
+
+On Windows, and under WSL, a USPTO, EPO, or OpenAlex variable missing from the process environment is read once per process from the Windows user environment (`reg query HKCU\Environment`, about a tenth of a second). Only those variables are kept, in memory only; `GITHUB_TOKEN` is excluded. Keys set with `setx` or the System dialog then work without restarting the MCP client. The slow path this replaces was a per-call key read that launched PowerShell on every call; a hang under parallel calls was reported but could not be reproduced in the server. Set `IP_WINDOWS_ENV=0` to disable it.
+
 ## Undocumented surfaces (off by default)
 
 | Variable | Effect |
@@ -91,11 +111,13 @@ Both surfaces have no published contract, can change shape without notice, and s
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `IP_CACHE_DIR` | `~/.cache/ip-search-mcp` | File cache |
+| `IP_CACHE_MAX_MB` | `300` | Cache size cap in megabytes; when the cache grows past it, the oldest entries are deleted first. An expired entry is deleted when it is read |
 | `IP_INDEX_DB` | `~/.cache/ip-search-mcp/ip-index.sqlite` | Local FTS index |
 | `IP_TIMEOUT_MS` | `30000` | Per-request timeout |
 | `IP_MAX_RETRIES` | `2` | Retry count for 429, 5xx, and network errors |
 | `IP_USER_AGENT` | `ip-search-mcp/0.1.0 (stdio MCP server)` | User-Agent header |
-| `PPUBS_BASE_URL`, `TMSEARCH_BASE_URL`, `USPTO_ODP_BASE_URL`, `USPTO_TSDR_BASE_URL`, `EPO_OPS_BASE_URL` | provider defaults | Host overrides for testing only |
+| `IP_WINDOWS_ENV` | on under Windows and WSL | `0` stops reading keys from the Windows user environment |
+| `PPUBS_BASE_URL`, `TMSEARCH_BASE_URL`, `USPTO_ODP_BASE_URL`, `USPTO_TSDR_BASE_URL`, `EPO_OPS_BASE_URL`, `OPENALEX_BASE_URL`, `ARXIV_BASE_URL`, `GITHUB_API_BASE_URL` | provider defaults | Host overrides for testing only |
 
 Overriding a base URL does not let a key travel to the new host: the host check compares against the configured base, and keys are attached after that check.
 

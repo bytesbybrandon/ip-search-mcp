@@ -1,6 +1,6 @@
 import { config } from "../config.js";
 import { IpError } from "../errors.js";
-import { requestJson } from "../http.js";
+import { requestJson, requestText } from "../http.js";
 import type { PatentHit } from "../types.js";
 import type { Provenance } from "../http.js";
 
@@ -27,6 +27,9 @@ export interface OdpSearchParams {
 }
 
 interface OdpApplicationMeta {
+  patentNumber?: string;
+  applicationTypeCode?: string;
+  applicationTypeLabelName?: string;
   inventionTitle?: string;
   patentTitle?: string;
   filingDate?: string;
@@ -40,10 +43,19 @@ interface OdpApplicationMeta {
   docketNumber?: string;
 }
 
-interface OdpWrapper {
+export interface OdpDocumentMeta {
+  productIdentifier?: string;
+  fileLocationURI?: string;
+}
+
+export interface OdpWrapper {
   applicationNumberText?: string;
   applicationMetaData?: OdpApplicationMeta;
   eventDataBag?: Array<{ eventDate?: string; eventDescriptionText?: string }>;
+  grantDocumentMetaData?: OdpDocumentMeta;
+  pgpubDocumentMetaData?: OdpDocumentMeta;
+  patentTermAdjustmentData?: { adjustmentTotalQuantity?: number };
+  assignmentBag?: Array<{ assignmentRecordedDate?: string; conveyanceText?: string; assigneeBag?: Array<{ assigneeNameText?: string }> }>;
 }
 
 interface OdpSearchResponse {
@@ -70,7 +82,7 @@ function headers(): Record<string, string> {
 
 export async function searchApplications(
   params: OdpSearchParams,
-): Promise<{ count: number; hits: PatentHit[]; provenance: Provenance; facets?: Record<string, Array<{ value: string; count: number }>> }> {
+): Promise<{ count: number; hits: PatentHit[]; wrappers?: OdpWrapper[]; provenance: Provenance; facets?: Record<string, Array<{ value: string; count: number }>> }> {
   const body: Record<string, unknown> = {
     q: params.q,
     filters: params.filters,
@@ -110,9 +122,8 @@ export async function searchApplications(
     throw error;
   }
 
-  const hits = (result.data.patentFileWrapperDataBag ?? []).map((wrapper) =>
-    toHit(wrapper, result.provenance),
-  );
+  const wrappers = result.data.patentFileWrapperDataBag ?? [];
+  const hits = wrappers.map((wrapper) => toHit(wrapper, result.provenance));
   const facets: Record<string, Array<{ value: string; count: number }>> = {};
   for (const group of result.data.facets ?? []) {
     for (const [name, values] of Object.entries(group)) {
@@ -126,6 +137,7 @@ export async function searchApplications(
   return {
     count: result.data.count ?? hits.length,
     hits,
+    wrappers,
     provenance: result.provenance,
     facets: Object.keys(facets).length > 0 ? facets : undefined,
   };
@@ -153,6 +165,7 @@ export function toHit(wrapper: OdpWrapper, provenance: Provenance): PatentHit {
     assignees: assignees.length > 0 ? assignees : undefined,
     cpc: meta.cpcClassificationBag,
     status: meta.applicationStatusDescriptionText,
+    patentNumber: meta.patentNumber || undefined,
     applicationNumber,
     url: applicationNumber
       ? `https://patents.google.com/?q=${encodeURIComponent(applicationNumber)}`
@@ -249,4 +262,193 @@ function collectDocuments(payload: unknown): Array<Record<string, unknown>> {
   };
   visit(payload);
   return found;
+}
+
+/** Search cache: ODP updates daily, so a 12-hour cache keeps repeat vets fast without going stale. */
+const SEARCH_TTL_MS = 12 * 60 * 60_000;
+/** Issued full text does not change. */
+const FULLTEXT_TTL_MS = 30 * 24 * 60 * 60_000;
+
+/**
+ * Title-and-metadata search with ODP's boolean syntax (AND, OR, quoted
+ * phrases, trailing `*`). Thin wrapper that applies the longer search cache.
+ * Perf: P1 · one request · CRAP <= 10 (CC 2).
+ */
+export async function searchTitles(q: string, limit = 100, offset = 0): Promise<{ count: number; wrappers: OdpWrapper[]; provenance: Provenance }> {
+  try {
+    const result = await requestJson<OdpSearchResponse>({
+      provider: "odp",
+      route: "/api/v1/patent/applications/search",
+      method: "POST",
+      headers: headers(),
+      // ODP rejects page sizes above 100.
+      body: { q, pagination: { offset, limit: Math.min(limit, 100) } },
+      rateLimit: { name: "odp:default", perMinute: 60 },
+      cache: { ttlMs: SEARCH_TTL_MS },
+    });
+    const wrappers = result.data.patentFileWrapperDataBag ?? [];
+    return { count: result.data.count ?? wrappers.length, wrappers, provenance: result.provenance };
+  } catch (error) {
+    if (error instanceof IpError && error.code === "NOT_FOUND") {
+      return { count: 0, wrappers: [], provenance: { provider: "odp", route: "POST /api/v1/patent/applications/search", retrievedAt: new Date().toISOString(), note: "no matching records" } };
+    }
+    throw error;
+  }
+}
+
+/** ODP stores CPC symbols with padded spaces (`G06F  12/0891`); queries must quote that exact form. */
+export function cpcQuery(symbol: string): string {
+  return `applicationMetaData.cpcClassificationBag:"${symbol.replace(/"/g, "")}"`;
+}
+
+/** Look up granted patents by number in one request. Perf: P1 · one request per 50 numbers · CRAP <= 10 (CC 2). */
+export async function byPatentNumbers(numbers: string[]): Promise<OdpWrapper[]> {
+  const digits = [...new Set(numbers.map((number) => number.replace(/\D/g, "")).filter((number) => number.length >= 6))].slice(0, 50);
+  if (digits.length === 0) return [];
+  const result = await searchTitles(`applicationMetaData.patentNumber:(${digits.join(" OR ")})`, digits.length);
+  return result.wrappers;
+}
+
+export interface ParsedClaim {
+  number: number;
+  text: string;
+  independent: boolean;
+  dependsOn: number[];
+}
+
+export interface FullText {
+  documentNumber?: string;
+  kind?: string;
+  title?: string;
+  abstract?: string;
+  claims: ParsedClaim[];
+  description?: string;
+  /** Backward citations to US patents and publications, as bare document numbers. */
+  citedUs: string[];
+  citedOtherCount: number;
+}
+
+function stripTags(xml: string): string {
+  return xml
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(Number(dec)))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Parse a USPTO grant (us-patent-grant) or publication (us-patent-application)
+ * full-text XML document: title, abstract, numbered claims with their
+ * dependencies, description text, and cited references.
+ * Perf: P1 · O(document length) · CRAP <= 15 (CC 6).
+ */
+export function parseFullTextXml(xml: string): FullText {
+  const first = (pattern: RegExp): string | undefined => {
+    const match = pattern.exec(xml);
+    return match?.[1] !== undefined ? stripTags(match[1]) : undefined;
+  };
+  const claims: ParsedClaim[] = [];
+  for (const match of xml.matchAll(/<claim\b[^>]*\bnum="(\d+)"[^>]*>([\s\S]*?)<\/claim>/g)) {
+    const body = match[2] ?? "";
+    const dependsOn = [...body.matchAll(/<claim-ref\b[^>]*idref="CLM-0*(\d+)"/g)].map((ref) => Number(ref[1]));
+    claims.push({ number: Number(match[1]), text: stripTags(body), independent: dependsOn.length === 0, dependsOn });
+  }
+  const citedUs: string[] = [];
+  let citedOtherCount = 0;
+  for (const match of xml.matchAll(/<(?:us-citation|citation)>([\s\S]*?)<\/(?:us-citation|citation)>/g)) {
+    const body = match[1] ?? "";
+    const patcit = /<patcit\b[\s\S]*?<country>([A-Z]{2})<\/country>\s*<doc-number>([^<]+)<\/doc-number>/.exec(body);
+    if (patcit && patcit[1] === "US" && patcit[2]) citedUs.push(patcit[2].trim());
+    else citedOtherCount += 1;
+  }
+  const publication = /<publication-reference>[\s\S]*?<doc-number>([^<]+)<\/doc-number>\s*<kind>([^<]+)<\/kind>/.exec(xml);
+  return {
+    documentNumber: publication?.[1]?.trim(),
+    kind: publication?.[2]?.trim(),
+    title: first(/<invention-title\b[^>]*>([\s\S]*?)<\/invention-title>/),
+    abstract: first(/<abstract\b[^>]*>([\s\S]*?)<\/abstract>/),
+    claims,
+    description: first(/<description\b[^>]*>([\s\S]*?)<\/description>/),
+    citedUs,
+    citedOtherCount,
+  };
+}
+
+/**
+ * Fetch and parse the issued (or else published) full text that ODP links
+ * from the file wrapper. The link must stay on the ODP host, so the key
+ * never leaves it. Perf: P1 · one request, cached 30 days · CRAP <= 10 (CC 4).
+ */
+export async function fullTextFor(wrapper: OdpWrapper): Promise<{ text: FullText; source: "grant" | "publication"; provenance: Provenance } | undefined> {
+  const grant = wrapper.grantDocumentMetaData?.fileLocationURI;
+  const pgpub = wrapper.pgpubDocumentMetaData?.fileLocationURI;
+  const link = grant ?? pgpub;
+  if (!link) return undefined;
+  const url = new URL(link);
+  const expected = new URL(config.providers.odp.baseUrl);
+  if (url.host !== expected.host || !url.pathname.startsWith("/api/v1/datasets/")) {
+    throw new IpError("UPSTREAM", `ODP full-text link points outside ${expected.host}`, { provider: "odp" });
+  }
+  const result = await requestText({
+    provider: "odp",
+    route: url.pathname,
+    headers: headers(),
+    rateLimit: { name: "odp:default", perMinute: 60 },
+    cache: { ttlMs: FULLTEXT_TTL_MS },
+    sourceId: wrapper.applicationNumberText,
+  });
+  return { text: parseFullTextXml(result.text), source: grant ? "grant" : "publication", provenance: result.provenance };
+}
+
+/** Earliest US non-provisional filing this application claims (continuation, divisional, CIP). Perf: P1 · one request · CRAP <= 10 (CC 3). */
+export async function earliestNonProvisional(application: string): Promise<string | undefined> {
+  const { data } = await getContinuity(application);
+  const bag = (data.patentFileWrapperDataBag as Array<{ parentContinuityBag?: Array<{ claimParentageTypeCode?: string; parentApplicationFilingDate?: string }> }> | undefined)?.[0]?.parentContinuityBag ?? [];
+  const dates = bag
+    .filter((entry) => entry.claimParentageTypeCode && entry.claimParentageTypeCode !== "PRO" && entry.parentApplicationFilingDate)
+    .map((entry) => entry.parentApplicationFilingDate!.slice(0, 10))
+    .sort();
+  return dates[0];
+}
+
+/**
+ * Later US applications whose examiners cited this patent in an office action
+ * (ODP Office Action Enriched Citation API). Examiner citations only; this is
+ * not a complete forward-citation list. Perf: P1 · one request · CRAP <= 10 (CC 2).
+ */
+export async function examinerForwardCitations(patentNumber: string, rows = 25): Promise<string[]> {
+  const digits = patentNumber.replace(/\D/g, "");
+  if (digits.length < 6) return [];
+  const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const ids = ["B1", "B2"].flatMap((kind) => [`"US ${digits} ${kind}"`, `"US ${grouped} ${kind}"`]);
+  const result = await requestJson<{ response?: { docs?: Array<{ patentApplicationNumber?: string }> } }>({
+    provider: "odp",
+    route: "/api/v1/patent/oa/enriched_cited_reference_metadata/v3/records",
+    method: "POST",
+    headers: headers(),
+    form: { criteria: `citedDocumentIdentifier:(${ids.join(" OR ")})`, rows: String(rows) },
+    rateLimit: { name: "odp:default", perMinute: 60 },
+    cache: { ttlMs: SEARCH_TTL_MS },
+  });
+  return [...new Set((result.data.response?.docs ?? []).map((doc) => doc.patentApplicationNumber).filter((value): value is string => Boolean(value)))];
+}
+
+/** Conveyances that record a lien or a licence, not a change of ownership. */
+const NOT_OWNERSHIP = /security|licen[cs]e|\blien\b|collateral|pledge|mortgage|release/i;
+
+/**
+ * The most recent recorded assignee of an ownership conveyance (security
+ * interests, licences, and releases are skipped), else the first applicant.
+ * Perf: P0 · O(assignments) · CRAP <= 10 (CC 4).
+ */
+export function currentOwner(wrapper: OdpWrapper): string | undefined {
+  const latest = [...(wrapper.assignmentBag ?? [])]
+    .filter((entry) => !NOT_OWNERSHIP.test(entry.conveyanceText ?? ""))
+    .sort((a, b) => (b.assignmentRecordedDate ?? "").localeCompare(a.assignmentRecordedDate ?? ""))
+    .find((entry) => entry.assigneeBag?.[0]?.assigneeNameText);
+  return latest?.assigneeBag?.[0]?.assigneeNameText ?? wrapper.applicationMetaData?.applicantBag?.[0]?.applicantNameText;
 }

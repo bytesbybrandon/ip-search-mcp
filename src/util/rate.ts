@@ -10,14 +10,17 @@ import { delay } from "./delay.js";
 export class RateLimiter {
   private readonly windowMs = 60_000;
   private readonly perWindow: number;
+  private readonly minIntervalMs: number;
   private stamps: number[] = [];
   private chain: Promise<void> = Promise.resolve();
 
-  constructor(perMinute: number) {
+  /** `minIntervalMs` spaces consecutive requests (arXiv asks for three seconds between calls). */
+  constructor(perMinute: number, minIntervalMs = 0) {
     if (!Number.isFinite(perMinute) || perMinute <= 0) {
       throw new Error(`invalid rate limit: ${perMinute}`);
     }
     this.perWindow = perMinute;
+    this.minIntervalMs = minIntervalMs;
   }
 
   acquire(): Promise<void> {
@@ -30,6 +33,11 @@ export class RateLimiter {
     for (;;) {
       const now = Date.now();
       this.stamps = this.stamps.filter((stamp) => now - stamp < this.windowMs);
+      const last = this.stamps[this.stamps.length - 1];
+      if (last !== undefined && now - last < this.minIntervalMs) {
+        await delay(last + this.minIntervalMs - now);
+        continue;
+      }
       if (this.stamps.length < this.perWindow) {
         this.stamps.push(now);
         return;
@@ -43,10 +51,10 @@ export class RateLimiter {
 
 const limiters = new Map<string, RateLimiter>();
 
-export function getLimiter(name: string, perMinute: number): RateLimiter {
+export function getLimiter(name: string, perMinute: number, minIntervalMs = 0): RateLimiter {
   const existing = limiters.get(name);
   if (existing) return existing;
-  const limiter = new RateLimiter(perMinute);
+  const limiter = new RateLimiter(perMinute, minIntervalMs);
   limiters.set(name, limiter);
   return limiter;
 }

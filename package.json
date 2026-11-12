@@ -22,7 +22,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "node --test dist/test/*.test.js",
+    "test": "node --import ./dist/test/setup.js --test dist/test/*.test.js",
     "check": "tsc -p tsconfig.json --noEmit",
     "skill:check": "node scripts/skill-check.mjs",
     "prepack": "npm run build",

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "../util/quiet.js";
 import { aliases, commands, home, specs } from "./commands.js";
 import { parseArgs, type CommandSpec } from "./args.js";
 import { renderHelp, renderRootHelp } from "./help.js";
