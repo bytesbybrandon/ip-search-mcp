@@ -74,7 +74,7 @@ export interface KeyTerm {
 /**
  * Rank the content words of a description by frequency with an early-mention
  * bonus, merging words that share a stem.
- * Perf: P1 · O(n log n) · CRAP <= 15 (CC 5, branch coverage >= 80%).
+ * Perf: P1 · O(n log n) · CRAP <= 15 (CC 5).
  */
 export function keyTerms(description: string, max = 12): KeyTerm[] {
   const words = tokenize(description).filter((word) => !STOPWORDS.has(word) && !/^\d+$/.test(word));
@@ -145,30 +145,32 @@ export interface GeneratedQueries {
 }
 
 /**
- * Generate several queries from one description: the anchor term (most
- * weighted) ANDed with each of the next terms, a few triples, and repeated
- * phrases. Several narrow queries beat one long any-term query.
+ * Generate several queries from one description: two anchor terms (the most
+ * weighted) each ANDed with the next terms, plus repeated phrases, whose slots
+ * are reserved so the cap never cuts them. Several narrow queries beat one
+ * long any-term query.
  * Perf: P1 · O(n log n) · CRAP <= 15 (CC 5).
  */
 export function generateQueries(description: string, max = 21): GeneratedQueries {
   const terms = keyTerms(description, 12);
   const phrases = keyPhrases(description);
-  const patentQueries: string[] = [];
+  const pairQueries: string[] = [];
   // Two anchors, each ANDed with the next terms: one generic anchor (a word
   // like "device") cannot then crowd out the specific pairings.
   const anchors = terms.slice(0, 2);
   const others = terms.slice(2, 12);
-  if (anchors.length === 2) patentQueries.push(`${wildcard(anchors[0]!)} AND ${wildcard(anchors[1]!)}`);
-  for (const other of others) for (const anchor of anchors) patentQueries.push(`${wildcard(anchor)} AND ${wildcard(other)}`);
-  if (anchors.length === 1) patentQueries.push(wildcard(anchors[0]!));
-  for (const phrase of phrases) patentQueries.push(`"${phrase}"`);
+  if (anchors.length === 2) pairQueries.push(`${wildcard(anchors[0]!)} AND ${wildcard(anchors[1]!)}`);
+  for (const other of others) for (const anchor of anchors) pairQueries.push(`${wildcard(anchor)} AND ${wildcard(other)}`);
+  if (anchors.length === 1) pairQueries.push(wildcard(anchors[0]!));
+  const phraseQueries = phrases.map((phrase) => `"${phrase}"`);
+  const patentQueries = [...new Set(pairQueries)].slice(0, Math.max(0, max - phraseQueries.length)).concat(phraseQueries);
   const textQueries = [
     ...phrases.slice(0, 2).map((phrase) => `"${phrase}" ${terms.slice(0, 2).map((term) => term.term).filter((t) => !phrase.includes(t)).join(" ")}`.trim()),
     terms.slice(0, 3).map((term) => term.term).join(" "),
     [terms[1], terms[2], terms[3]].filter(Boolean).map((term) => term!.term).join(" "),
     [terms[1], terms[4], terms[5]].filter(Boolean).map((term) => term!.term).join(" "),
   ].filter((query, index, all) => query && all.indexOf(query) === index);
-  return { terms, phrases, patentQueries: [...new Set(patentQueries)].slice(0, max), textQueries: textQueries.slice(0, 3) };
+  return { terms, phrases, patentQueries, textQueries: textQueries.slice(0, 3) };
 }
 
 /**
@@ -207,7 +209,7 @@ function normalizeAlternative(token: string): string {
  * Parse `"exact phrase" AND term OR other AND prefix* NOT excluded` into AND
  * clauses of OR alternatives. Bare adjacent words are ANDed; NOT excludes the
  * next term and any OR alternatives that follow it. Parentheses are ignored.
- * Perf: P1 · O(n) · CRAP <= 15 (CC 11, branch coverage >= 90%).
+ * Perf: P1 · O(n) · CRAP <= 15 (CC 11).
  */
 export function parseBoolean(query: string): Clause[] {
   const clauses: Clause[] = [];
@@ -313,7 +315,7 @@ export interface RankResult {
 /**
  * BM25 over the candidate pool with per-field weights. IDF is computed on
  * the pool itself, which is what matters for ordering it.
- * Perf: P1 · O(docs x tokens) first time, O(docs x terms) again · CRAP <= 15 (CC 6, branch coverage >= 80%).
+ * Perf: P1 · O(docs x tokens) first time, O(docs x terms) again · CRAP <= 15 (CC 6).
  */
 export function rankDocuments(documents: RankDocument[], terms: KeyTerm[], k1 = 1.2, b = 0.75): RankResult[] {
   if (documents.length === 0 || terms.length === 0) return documents.map((doc) => ({ id: doc.id, score: 0, matched: [], missing: terms.map((t) => t.term) }));

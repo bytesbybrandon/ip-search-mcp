@@ -48,7 +48,17 @@ export interface Candidate {
   source: "patent" | "paper" | "preprint" | "code";
   id: string;
   title: string;
+  /**
+   * The earliest relevant date, for judging whether a reference predates an idea.
+   * Patents: effective filing date, else filing date, else earliest publication
+   * date. Papers and preprints: publication date. Repositories: creation date.
+   */
   date?: string;
+  /** Patents only: the dates behind `date`, and the grant date, kept apart from it. */
+  effectiveFilingDate?: string;
+  filingDate?: string;
+  publicationDate?: string;
+  grantDate?: string;
   owner?: string;
   url?: string;
   status?: string;
@@ -372,7 +382,11 @@ export async function priorArtSearch(input: SearchInput): Promise<SearchOutput> 
       source: "patent",
       id,
       title: doc.fields.title ?? "(untitled)",
-      date: metaData.grantDate ?? metaData.earliestPublicationDate ?? metaData.filingDate,
+      date: metaData.effectiveFilingDate ?? metaData.filingDate ?? metaData.earliestPublicationDate,
+      effectiveFilingDate: metaData.effectiveFilingDate,
+      filingDate: metaData.filingDate,
+      publicationDate: metaData.earliestPublicationDate,
+      grantDate: metaData.grantDate,
       owner: odp.currentOwner(entry.wrapper),
       url: patentUrl(entry.wrapper, entry.full),
       status: metaData.applicationStatusDescriptionText,
@@ -440,6 +454,7 @@ export async function priorArtSearch(input: SearchInput): Promise<SearchOutput> 
   notes.push(
     "Patents are found by title, CPC class and citation links in the USPTO Open Data Portal, then re-ranked on full text and claims. A patent whose title, class and citations miss every query is not seen. The PatentsView search API that once offered full-text search was retired in 2026.",
     "A low or zero score is not evidence of novelty. Read the claims of every candidate before relying on a ranking.",
+    "date is the earliest relevant date: a patent's effective filing date (else its filing date, else its earliest publication date), a paper's or preprint's publication date, a repository's creation date. A patent's grant date is the separate grantDate field.",
   );
   return {
     terms: terms.map((term) => ({ term: term.term, weight: term.weight })),

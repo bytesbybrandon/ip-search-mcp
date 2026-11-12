@@ -344,7 +344,7 @@ function stripTags(xml: string): string {
  * Parse a USPTO grant (us-patent-grant) or publication (us-patent-application)
  * full-text XML document: title, abstract, numbered claims with their
  * dependencies, description text, and cited references.
- * Perf: P1 · O(document length) · CRAP <= 15 (CC 6, branch coverage >= 80%).
+ * Perf: P1 · O(document length) · CRAP <= 15 (CC 6).
  */
 export function parseFullTextXml(xml: string): FullText {
   const first = (pattern: RegExp): string | undefined => {

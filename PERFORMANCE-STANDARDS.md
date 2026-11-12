@@ -32,12 +32,14 @@ Forbidden: unbounded provider loops (every expansion step has a fixed cap), an N
 
 CRAP(m) = comp(m)^2 x (1 - cov(m))^3 + comp(m)
 
-| Tier | CRAP ceiling | Cyclomatic complexity | Branch coverage |
-|------|--------------|-----------------------|-----------------|
-| P0 | <= 10 | <= 8 | >= 90% |
-| P1 | <= 15 | <= 12 | >= 80% |
-| P2 | <= 25 | <= 15 | >= 70% |
-| Any | <= 30 | refactor above 30 | - |
+| Tier | CRAP ceiling | Cyclomatic complexity |
+|------|--------------|-----------------------|
+| P0 | <= 10 | <= 8 |
+| P1 | <= 15 | <= 12 |
+| P2 | <= 25 | <= 15 |
+| Any | <= 30 | refactor above 30 |
+
+These ceilings are aspirational review guidance: nothing in CI computes complexity or CRAP, and the repository sets no coverage threshold. They tell a reviewer when a function has grown too complex for the tests that cover it. The latency targets in the tier table are likewise design targets, not measured gates.
 
 Network orchestration (P2) is covered through its pure parts: query generation, ranking, parsing, and term estimation are tested directly with fixtures; the orchestration is tested for its no-key and failure paths.
 
@@ -70,6 +72,6 @@ Before merging:
 ```ts
 /**
  * What the function does.
- * Perf: P1 · O(n log n) · CRAP <= 15 (CC 5, branch coverage >= 80%).
+ * Perf: P1 · O(n log n) · CRAP <= 15 (CC 5).
  */
 ```

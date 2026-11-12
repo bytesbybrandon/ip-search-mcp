@@ -12,6 +12,19 @@ test("hydrate is a hard cap on full texts read, counting the citation wave", asy
   });
 });
 
+test("a patent's date is its earliest relevant date, and the grant date stays separate", async () => {
+  await withOdp(9_150_000, async () => {
+    const result = await priorArtSearch({ queries: ["optical AND sensor AND dating"], sources: ["patents"], hydrate: 0, limit: 5 });
+    const patent = result.results[0]!;
+    assert.equal(patent.date, "2017-06-01", "effective filing date comes first, not the 2023 grant");
+    assert.equal(patent.effectiveFilingDate, "2017-06-01");
+    assert.equal(patent.filingDate, "2018-05-14");
+    assert.equal(patent.publicationDate, "2018-11-15");
+    assert.equal(patent.grantDate, "2023-09-12");
+    assert.ok(result.notes.some((note) => /date is the earliest relevant date/.test(note)));
+  });
+});
+
 test("hydrate 0 reads no full text and expand off keeps the whole budget for the first wave", async () => {
   await withOdp(9_200_000, async (stats) => {
     await priorArtSearch({ queries: ["optical AND sensor"], sources: ["patents"], hydrate: 0 });

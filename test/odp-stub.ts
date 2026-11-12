@@ -11,7 +11,15 @@ const BASE = "https://api.uspto.gov";
 export function grant(number: number, title: string, extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     applicationNumberText: String(15_000_000 + number),
-    applicationMetaData: { patentNumber: String(number), inventionTitle: title, filingDate: "2018-05-14", grantDate: "2020-01-07", applicationStatusDescriptionText: "Patented Case" },
+    applicationMetaData: {
+      patentNumber: String(number),
+      inventionTitle: title,
+      effectiveFilingDate: "2017-06-01",
+      filingDate: "2018-05-14",
+      earliestPublicationDate: "2018-11-15",
+      grantDate: "2023-09-12",
+      applicationStatusDescriptionText: "Patented Case",
+    },
     grantDocumentMetaData: { fileLocationURI: `${BASE}/api/v1/datasets/products/files/grants/${number}.xml` },
     ...extra,
   };

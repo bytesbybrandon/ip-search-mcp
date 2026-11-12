@@ -52,7 +52,7 @@ function continuityNote(facts: TermFacts): { basis?: string; caveat?: string } {
 }
 
 /**
- * Perf: P1 · O(events) · CRAP <= 15 (CC 12, branch coverage >= 80%).
+ * Perf: P1 · O(events) · CRAP <= 15 (CC 12).
  */
 export function estimateTerm(facts: TermFacts): TermEstimate {
   const today = (facts.today ?? new Date().toISOString()).slice(0, 10);

@@ -54,6 +54,20 @@ test("generated queries are several narrow AND queries, not one any-term query",
   assert.ok(generated.textQueries.length >= 1);
 });
 
+test("repeated phrases keep their query slots when many terms fill the cap", () => {
+  const long =
+    "A handheld optical sensor measures drift in a sealed chamber. The optical sensor recalibrates itself against a reference surface whenever the measured drift exceeds a stored threshold. " +
+    "The reference surface sits behind a transparent window, and a heater keeps the reference surface free of condensation. A controller logs each recalibration and transmits the log over a wireless radio " +
+    "to a remote server, which schedules maintenance for the optical sensor. The housing includes a battery, a display, and a magnetic mount for attaching the sensor to a pipe.";
+  const generated = generateQueries(long);
+  assert.equal(generated.terms.length, 12);
+  assert.ok(generated.phrases.includes("reference surface") && generated.phrases.includes("optical sensor"));
+  assert.ok(generated.patentQueries.length <= 21, "the cap still holds");
+  assert.ok(generated.patentQueries.includes('"reference surface"') && generated.patentQueries.includes('"optical sensor"'), "the phrase queries survive the cap");
+  assert.ok(generated.patentQueries.some((query) => query.includes(" AND ")));
+  assert.equal(new Set(generated.patentQueries).size, generated.patentQueries.length);
+});
+
 test("short stems query both forms instead of a broad prefix", () => {
   assert.equal(wildcard({ term: "arms", stem: "arm", weight: 1 }), "(arm OR arms)");
   assert.equal(wildcard({ term: "calibration", stem: "calibrat", weight: 1 }), "calibrat*");

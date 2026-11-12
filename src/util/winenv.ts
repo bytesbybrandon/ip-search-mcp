@@ -14,7 +14,7 @@ export const WINDOWS_ENV_NAMES = [
 
 /**
  * Parse `reg query HKCU\Environment` output, keeping only allowlisted names.
- * Perf: P1 · O(lines) · CRAP <= 15 (CC 4, branch coverage >= 80%).
+ * Perf: P1 · O(lines) · CRAP <= 15 (CC 4).
  */
 export function parseRegQuery(output: string, allowed: readonly string[] = WINDOWS_ENV_NAMES): Record<string, string> {
   const out: Record<string, string> = {};

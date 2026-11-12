@@ -140,7 +140,7 @@ function daysBetween(from: Date, to: Date): number {
  */
 /**
  * One foreign jurisdiction's bar for a given disclosure.
- * Perf: P1 · O(rules) · CRAP <= 15 (CC 7, branch coverage >= 80%).
+ * Perf: P1 · O(rules) · CRAP <= 15 (CC 7).
  */
 function foreignBar(code: string, disclosure: Date, reference: Date, today: Date, byInventor: boolean | undefined): JurisdictionBar {
   const rule = GRACE_RULES.find((entry) => entry.code === code);

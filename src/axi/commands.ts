@@ -165,6 +165,7 @@ interface Candidate {
   id: string;
   title: string;
   date?: string;
+  grantDate?: string;
   owner?: string;
   url?: string;
   status?: string;
@@ -193,7 +194,7 @@ const priorArtSearch: CommandModule = {
       { name: "query", type: "string", description: "explicit boolean queries separated by ';' (replaces generated ones)" },
       { name: "sources", type: "string", default: "patents,papers,preprints,code", description: "comma-separated subset" },
       { name: "limit", type: "string", default: "25", description: "rows to return" },
-      { name: "fields", type: "string", description: "extra columns: url,status,owner,coverage,read,found,why,score" },
+      { name: "fields", type: "string", description: "extra columns: grant,url,status,owner,coverage,read,found,why,score (date is the earliest relevant date: a patent's effective filing date, a paper's publication date)" },
       { name: "full", type: "boolean", description: "do not truncate cell text" },
     ],
     examples: [
@@ -214,7 +215,7 @@ const priorArtSearch: CommandModule = {
     });
     const full = booleanFlag(parsed, "full");
     const fields = requestedFields(stringFlag(parsed, "fields"), ["rank", "source", "id", "date", "title"], new Set([
-      "rank", "source", "id", "date", "title", "url", "status", "owner", "coverage", "read", "found", "why", "score",
+      "rank", "source", "id", "date", "title", "grant", "url", "status", "owner", "coverage", "read", "found", "why", "score",
     ]));
     const rows = payload.results.map((hit) => ({
       rank: hit.rank,
@@ -222,6 +223,7 @@ const priorArtSearch: CommandModule = {
       id: hit.id,
       date: (hit.date ?? "").slice(0, 10),
       title: cell(hit.title, 80, full),
+      grant: (hit.grantDate ?? "").slice(0, 10),
       url: hit.url ?? "",
       status: cell(hit.status, 40, full),
       owner: cell(hit.owner, 40, full),

@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { priorArtSearch } from "../src/research.js";
+import { config } from "../src/config.js";
+import { searchRepositories } from "../src/providers/github.js";
 import { searchWorks } from "../src/providers/openalex.js";
 
-async function withFetch<T>(handler: () => Response, run: (calls: { count: number }) => Promise<T>): Promise<T> {
+async function withFetch<T>(handler: (url: URL, init?: RequestInit) => Response, run: (calls: { count: number }) => Promise<T>): Promise<T> {
   const realFetch = globalThis.fetch;
   const calls = { count: 0 };
-  globalThis.fetch = async () => {
+  globalThis.fetch = async (input, init) => {
     calls.count += 1;
-    return handler();
+    return handler(new URL(typeof input === "string" || input instanceof URL ? input : input.url), init);
   };
   try {
     return await run(calls);
@@ -60,4 +62,26 @@ test("a short Retry-After is still honored and the request retried", async () =>
       assert.equal(hits[0]?.title, "Optical drift correction");
     },
   );
+});
+
+test("GitHub search asks for public repositories only, with or without a token", async () => {
+  const seen: Array<{ q: string | null; authorization: string | null }> = [];
+  const handler = (url: URL, init?: RequestInit): Response => {
+    seen.push({ q: url.searchParams.get("q"), authorization: new Headers(init?.headers).get("authorization") });
+    return new Response(JSON.stringify({ items: [{ full_name: "example/optical-sensor", html_url: "https://github.com/example/optical-sensor", created_at: "2020-02-02T00:00:00Z" }] }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  await withFetch(handler, async () => {
+    const hits = await searchRepositories('"reference surface" AND optical sensor NOT camera', 5);
+    assert.equal(hits[0]?.id, "example/optical-sensor");
+    Object.assign(config.providers.github, { key: "example-token" });
+    try {
+      await searchRepositories("optical sensor drift", 5);
+    } finally {
+      Object.assign(config.providers.github, { key: undefined });
+    }
+  });
+  assert.equal(seen[0]?.q, '"reference surface" optical sensor NOT camera is:public');
+  assert.equal(seen[0]?.authorization, null);
+  assert.equal(seen[1]?.q, "optical sensor drift is:public");
+  assert.equal(seen[1]?.authorization, "Bearer example-token", "a token is still sent, but never widens the search past public repositories");
 });
