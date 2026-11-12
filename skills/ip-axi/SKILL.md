@@ -21,9 +21,6 @@ node <repo>/dist/src/axi/index.js
 
 | Command | Purpose |
 | --- | --- |
-| `vet <description>` | Per feature (headings, bullets, or paragraphs; `--whole` for one): closest art, FTO flags, disclosure status, recommendation. `--sites url,url`, `--signature "a;b"` (repeatable) or `--signatures-file @file`, `--detectable yes\|no`, `--provisional`, `--fingerprints` |
-| `fto chart <number...>` | In-force patents only: independent claims split into elements, each present, absent, or unclear; `--feature @file` |
-| `disclosure scan <url...>` | Dated timeline of when pages first showed `--signature "a;b"` (Wayback, urlscan, archive.today, live) |
 | `prior-art search <description>` | Generated queries over patents, papers, preprints, and code; one ranked list with why each hit overlaps. `--query` for your own boolean queries, `--sources`, `--fields why,url,status,grant`. `date` is the earliest relevant date (a patent's effective filing date, not its grant date); `grant` adds the grant date. See [docs/TOOLS.md](../../docs/TOOLS.md) |
 | `patents read <number...>` | Independent claims, owner, status, estimated expiry, fee state; `--description` adds per-claim overlap |
 | `patents search <query>` | Search across configured providers, `--provider auto\|odp\|ops\|ppubs\|index` |
@@ -62,9 +59,6 @@ node <repo>/dist/src/axi/index.js
 ```bash
 node <repo>/dist/src/axi/index.js prior-art search "A handheld optical sensor that recalibrates against a sealed reference surface when drift exceeds a threshold" --fields why
 node <repo>/dist/src/axi/index.js patents read 9765584 --description @idea.md
-node <repo>/dist/src/axi/index.js vet @features.md --sites https://example.com/ --provisional
-node <repo>/dist/src/axi/index.js fto chart 9765584 --feature @feature.md
-node <repo>/dist/src/axi/index.js disclosure scan https://example.com/ --signature "Recalibrate now"
 node <repo>/dist/src/axi/index.js patents search "optical sensor calibration" --limit 5
 node <repo>/dist/src/axi/index.js trademarks get 87454105
 node <repo>/dist/src/axi/index.js drawings validate ip/drawings/fig-1.svg --description @ip/specification.md

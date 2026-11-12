@@ -16,7 +16,7 @@
 </script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a1d24'/%3E%3Crect x='6.5' y='5.5' width='19' height='21' fill='none' stroke='%23f4f1ea' stroke-width='1.4'/%3E%3Cline x1='10' y1='21' x2='22' y2='21' stroke='%23d4553a' stroke-width='1.6'/%3E%3C/svg%3E">
 <title>ip-search-mcp: patent and trademark research for agents</title>
-<meta name="description" content="An MCP server and CLI for vetting new ideas: prior-art search with claim reading, freedom-to-operate charts, dated disclosure checks of your own pages, patent and trademark research, 37 CFR 1.84 drawing validation, and review-only drafting. Provenance on every hit. Nothing is filed.">
+<meta name="description" content="An MCP server and CLI for patent and trademark research, 37 CFR 1.84 drawing validation, and review-only drafting. Provenance on every hit. Nothing is filed.">
 <meta property="og:title" content="ip-search-mcp">
 <meta property="og:description" content="Patent research your agent can cite. Nothing is filed.">
 <meta property="og:type" content="website">
@@ -307,7 +307,7 @@
         </div>
         <div class="actions">
           <button class="btn btn--primary" type="button" data-copy-fn="clock">Copy as an agent prompt</button>
-          <a class="btn" href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/TOOLS.md">All 24 tools</a>
+          <a class="btn" href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/TOOLS.md">All 21 tools</a>
         </div>
       </div>
     </div>
@@ -317,26 +317,6 @@
     <div class="container">
       <h2 id="index-title">Every answer names its source.</h2>
       <ol class="sources">
-        <li class="source">
-          <p class="source__rule measured">102(a)</p>
-          <div class="source__what"><h3>Prior art</h3><p>Patents, papers, preprints, and code, ranked by what their claims say.</p></div>
-          <p class="source__sample measured">queries: 21<br>claims read: 30<br>sources: 4</p>
-        </li>
-        <li class="source">
-          <p class="source__rule measured">271</p>
-          <div class="source__what"><h3>Freedom to operate</h3><p>Each element of each in-force claim: present, absent, or unclear.</p></div>
-          <p class="source__sample measured">elements: 4<br>present: 3<br>absent: 1</p>
-        </li>
-        <li class="source">
-          <p class="source__rule measured">Archive</p>
-          <div class="source__what"><h3>Your own pages</h3><p>The first dated capture that shows your feature, from the Wayback Machine, urlscan, and archive.today.</p></div>
-          <p class="source__sample measured">first match: 2015-10-01<br>source: wayback</p>
-        </li>
-        <li class="source">
-          <p class="source__rule measured">Vet</p>
-          <div class="source__what"><h3>One verdict per feature</h3><p>File, publish defensively, or keep it secret, with the reasons and a provisional-ready draft.</p></div>
-          <p class="source__sample measured">recommendation: file<br>fto flags: 0</p>
-        </li>
         <li class="source">
           <p class="source__rule measured">1.84</p>
           <div class="source__what"><h3>Drawings</h3><p>Seventeen checks, each with its paragraph.</p></div>
@@ -360,11 +340,11 @@
           <p class="stats__unit">trademark records indexed in 60 seconds.</p>
         </div>
         <div class="stats__tools">
-          <p class="label">The 24 tools</p>
+          <p class="label">The 21 tools</p>
           <dl class="tools">
             <div><dt>Patents</dt><dd class="measured"><code>patents_search</code><code>patent_get</code><code>patent_documents</code><code>patent_family</code></dd></div>
             <div><dt>Trademarks</dt><dd class="measured"><code>trademarks_search</code><code>trademark_get</code><code>trademark_documents</code></dd></div>
-            <div><dt>Research</dt><dd class="measured"><code>vet</code><code>prior_art_search</code><code>patent_read</code><code>fto_chart</code><code>disclosure_scan</code><code>concept_assessment</code><code>prior_art_report</code></dd></div>
+            <div><dt>Research</dt><dd class="measured"><code>prior_art_search</code><code>patent_read</code><code>concept_assessment</code><code>prior_art_report</code></dd></div>
             <div><dt>Drawings</dt><dd class="measured"><code>drawing_spec</code><code>drawing_validate</code><code>drawing_rules</code></dd></div>
             <div><dt>Drafting</dt><dd class="measured"><code>application_draft</code><code>claims_draft</code></dd></div>
             <div><dt>Review</dt><dd class="measured"><code>application_lint</code><code>disclosure_review</code><code>attorney_packet</code></dd></div>

@@ -43,10 +43,6 @@ Domain modules never import providers. Providers never format user-facing text. 
 | OpenAlex | `api.openalex.org` | optional `api_key` | Documented, free tier with a daily budget |
 | arXiv | `export.arxiv.org` | none | Documented, one request per three seconds |
 | GitHub | `api.github.com` | optional bearer token | Documented REST search |
-| Wayback | `web.archive.org` | none | Documented CDX and raw-capture endpoints |
-| urlscan | `urlscan.io` | none | Documented search API; public scans only |
-| archive.today | `archive.ph` | none | Memento timemap; often refuses automated clients |
-| live pages | any `http`/`https` URL given by the caller | none | Plain fetch, streamed and cut off at 2 MB (the scan notes when it was), no credentials |
 | index | local file | none | Derived from ODP bulk XML |
 
 Each provider normalizes into `PatentHit`, `TrademarkHit`, `PatentDocument`, or a raw record, and every hit carries `Provenance`: provider, route, retrieval time, source id, and an `undocumented` flag when it applies.
@@ -68,9 +64,6 @@ Each provider normalizes into `PatentHit`, `TrademarkHit`, `PatentDocument`, or 
 | `openalex:default` | 60/min | Conservative; the daily budget is the real limit |
 | `arxiv:default` | 20/min | arXiv API terms: one request per three seconds |
 | `github:search` | 10/min, 30/min with a token | GitHub search API limits |
-| `wayback:cdx`, `wayback:content` | 30/min each | Conservative |
-| `urlscan:search` | 20/min | Conservative for unauthenticated search |
-| `archivetoday:timemap` | 10/min | Conservative; no retries, 15 s timeout |
 
 The limiter is a sliding window shared per bucket across the process. Retries honor `Retry-After` and use exponential backoff for 429 and 5xx.
 
@@ -89,10 +82,6 @@ A provider that answers 429 or 5xx is retried with backoff, but never for longer
 5. Every provider failure becomes a run entry with its error; the other sources still return.
 
 `patent_read` resolves a number to its file wrapper, reads the issued (or published) full text, looks up the earliest non-provisional parent, and passes status, events, and term adjustment to `term.estimateTerm`.
-
-## Vet pipeline
-
-`src/vet.ts` composes `research.priorArtSearch`, `research.readPatent`, `domain/fto` (claim elements and present, absent, or unclear marks), `providers/archives` (Wayback, urlscan, archive.today, live pages), `domain/disclosure`, and `domain/vet` (feature splitting, recommendation rules, provisional section, fingerprints). Features run one after another so a multi-feature vet stays inside provider rate limits. Wayback captures are cached 30 days because they never change.
 
 ## Drawing pipeline
 
