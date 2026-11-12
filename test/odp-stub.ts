@@ -45,8 +45,8 @@ export interface OdpStubOptions {
   continuityStatus?: number;
   /** Filing date of a parent non-provisional the continuity endpoint reports. */
   parentDate?: string;
-  /** Extra fields for the patents the number lookup returns. */
-  grantExtra?: Record<string, unknown>;
+  /** Extra fields for the patents the number lookup returns, or a function of the patent number. */
+  grantExtra?: Record<string, unknown> | ((number: number) => Record<string, unknown>);
 }
 
 export interface OdpStubStats {
@@ -77,7 +77,7 @@ export async function withOdp<T>(firstNumber: number, run: (stats: OdpStubStats)
     const q = (JSON.parse(String(init?.body ?? "{}")) as { q?: string }).q ?? "";
     const numbers = q.match(/\d{6,8}/g) ?? [];
     if (q.startsWith("applicationMetaData.patentNumber:")) {
-      return json({ count: numbers.length, patentFileWrapperDataBag: numbers.map((number) => grant(Number(number), number === "7000001" ? "Optical sensor reference cited earlier" : `Granted example ${number}`, options.grantExtra)) });
+      return json({ count: numbers.length, patentFileWrapperDataBag: numbers.map((number) => grant(Number(number), number === "7000001" ? "Optical sensor reference cited earlier" : `Granted example ${number}`, typeof options.grantExtra === "function" ? options.grantExtra(Number(number)) : options.grantExtra)) });
     }
     if (q.startsWith("applicationNumberText:")) {
       return json({ count: numbers.length, patentFileWrapperDataBag: numbers.map((number) => application(number, "Optical sensor drift follow-on application")) });

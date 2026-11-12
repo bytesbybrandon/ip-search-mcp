@@ -5,6 +5,8 @@ export interface FlagSpec {
   type: "string" | "boolean";
   default?: string | boolean;
   values?: string[];
+  /** A string flag that may be given more than once; the values join with ";". */
+  repeatable?: boolean;
   description: string;
 }
 
@@ -82,7 +84,7 @@ export function parseArgs(argv: string[], spec: CommandSpec): Parsed {
           `valid values: ${flag.values.join(", ")}`,
         );
       }
-      flags[name] = value;
+      flags[name] = flag.repeatable && typeof flags[name] === "string" ? `${flags[name]};${value}` : value;
       continue;
     }
     positionals.push(token);

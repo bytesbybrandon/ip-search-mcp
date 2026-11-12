@@ -20,6 +20,7 @@ import * as tmsearch from "./providers/tmsearch.js";
 import * as tsdr from "./providers/tsdr.js";
 import { generateQueries } from "./domain/relevance.js";
 import { mapLimit, priorArtSearch, readPatent } from "./research.js";
+import { disclosureScan, ftoCharts, vet } from "./vet.js";
 import type { PatentHit, TrademarkHit } from "./types.js";
 
 type ToolResult = {
@@ -70,7 +71,7 @@ const sheetSchema = z.object({
 });
 
 const provenanceSchema = z.object({
-  provider: z.enum(["odp", "tsdr", "ops", "ppubs", "tmsearch", "index", "openalex", "arxiv", "github", "derived"]),
+  provider: z.enum(["odp", "tsdr", "ops", "ppubs", "tmsearch", "index", "openalex", "arxiv", "github", "wayback", "urlscan", "archivetoday", "derived"]),
   route: z.string(),
   retrievedAt: z.string(),
   sourceId: z.string().optional(),
@@ -457,6 +458,55 @@ export function createServer(): McpServer {
         });
         return ok({ readings, disclaimer: "Term, status, and overlap are triage aids for a practitioner, not legal conclusions." });
       }),
+  );
+
+  server.registerTool(
+    "fto_chart",
+    {
+      title: "Freedom-to-operate element charts",
+      description:
+        "For each US patent number: skip it when it is expired, lapsed, abandoned, or pending, or when its claims cannot be read (each skipped patent is listed with its reason); a patent whose fee status is uncertain is charted. Then split every independent claim into elements and mark each element present, absent, or unclear in the feature description. A claim with every element present is flagged for counsel. Term overlap, not claim construction; not an infringement opinion.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      inputSchema: {
+        numbers: z.array(z.string().min(5)).min(1).max(20).describe("US patent numbers to chart"),
+        feature: z.string().min(20).describe("The feature, described as it is or will be built"),
+      },
+    },
+    async ({ numbers, feature }) => guard(async () => ok(await ftoCharts(numbers, feature))),
+  );
+
+  server.registerTool(
+    "disclosure_scan",
+    {
+      title: "Dated public-disclosure check of web pages",
+      description:
+        "For each page URL: find the earliest Wayback Machine capture whose content contains one of the signatures, list the first archive.today capture and the first public urlscan.io scan of the host, and check the live page now. Returns a dated timeline and the earliest archive match, which is the latest date the feature can have become public, with the grace-period assessment for that date. A signature seen only on the live page is reported as public now with an unknown first date and no deadline. Archives only show what they crawled; a page can have been public earlier. `incomplete` is true when a match may have been missed or dated too late: a fetch failed, a live page was cut short, a Wayback history longer than 500 captures had no match in its oldest 500, or the host fallback left archived pages unsearched and found nothing.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      inputSchema: {
+        urls: z.array(z.string().url()).min(1).max(20).describe("Pages or script bundles to check"),
+        signatures: z.array(z.string().min(3)).min(1).max(20).describe("Exact strings that would show the feature (UI text, identifiers, symbols)"),
+      },
+    },
+    async ({ urls, signatures }) => guard(async () => ok(await disclosureScan(urls, signatures))),
+  );
+
+  server.registerTool(
+    "vet",
+    {
+      title: "Vet features: prior art, freedom to operate, disclosure, recommendation",
+      description:
+        "Split a description into features (headings, bullets, or paragraphs; pass whole=true to keep it as one; at most 10 are vetted per call and the rest are named in notes), and for each feature run prior_art_search, chart the first five in-force patents element by element (reading up to 15 candidates and listing the skipped ones with reasons), check the given sites for public disclosure, and return one verdict: closest art, freedom-to-operate flags, disclosure status, and a recommendation (file, publish defensively, or keep secret) with reasons, plus a provisional-ready draft section and signature fingerprints for a pre-publication check. The verdict says when its evidence is partial. Triage for counsel, not legal advice.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      inputSchema: {
+        description: z.string().min(20).optional().describe("Features to vet; split per feature by default"),
+        features: z.array(z.object({ name: z.string(), description: z.string().min(20), signatures: z.array(z.string().min(3)).max(20).optional() })).max(10).optional(),
+        signatures: z.array(z.string().min(3)).max(20).optional().describe("Exact strings that would show a feature (UI text, identifiers, symbols); used for every feature without its own signatures"),
+        whole: z.boolean().optional().describe("Vet the description as one feature instead of splitting it"),
+        sites: z.array(z.string().url()).max(20).optional().describe("Public pages or bundles to check for disclosure"),
+        detectable: z.boolean().optional().describe("Whether the features can be seen or inferred from outside the product"),
+      },
+    },
+    async (input) => guard(async () => ok(await vet(input))),
   );
 
   server.registerTool(
