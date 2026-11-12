@@ -37,7 +37,7 @@ export interface RequestOptions {
   query?: Record<string, string | number | undefined>;
   accept?: "json" | "text";
   cache?: { ttlMs: number };
-  rateLimit?: { name: string; perMinute: number };
+  rateLimit?: { name: string; perMinute: number; minIntervalMs?: number };
   timeoutMs?: number;
   retries?: number;
   sourceId?: string;
@@ -134,7 +134,7 @@ async function perform(
   headers: Record<string, string>,
 ): Promise<Response> {
   const limiter = options.rateLimit
-    ? getLimiter(options.rateLimit.name, options.rateLimit.perMinute)
+    ? getLimiter(options.rateLimit.name, options.rateLimit.perMinute, options.rateLimit.minIntervalMs)
     : undefined;
   const retries = options.retries ?? config.maxRetries;
   let lastError: unknown;

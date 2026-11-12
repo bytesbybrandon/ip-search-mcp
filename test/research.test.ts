@@ -8,6 +8,7 @@ import {
   matchesAll,
   parseBoolean,
   rankDocuments,
+  plainQuery,
   stem,
   wildcard,
 } from "../src/domain/relevance.js";
@@ -26,9 +27,9 @@ const SENSOR =
 test("stemming merges inflections that queries must treat as one term", () => {
   for (const [a, b] of [
     ["calibration", "calibrating"],
-    ["dependencies", "dependents"],
+    ["measured", "measuring"],
     ["sensors", "sensor"],
-    ["hierarchical", "hierarchy"],
+    ["optical", "optics"],
     ["indexes", "index"],
   ] as const) {
     assert.equal(stem(a), stem(b), `${a} vs ${b}`);
@@ -52,7 +53,7 @@ test("generated queries are several narrow AND queries, not one any-term query",
 });
 
 test("short stems query both forms instead of a broad prefix", () => {
-  assert.equal(wildcard({ term: "keys", stem: "key", weight: 1 }), "(key OR keys)");
+  assert.equal(wildcard({ term: "arms", stem: "arm", weight: 1 }), "(arm OR arms)");
   assert.equal(wildcard({ term: "calibration", stem: "calibrat", weight: 1 }), "calibrat*");
   assert.equal(wildcard({ term: "lens", stem: "lens", weight: 1 }), "lens");
 });
@@ -124,7 +125,19 @@ test("patent term estimate: in force, lapsed, expired, pending", () => {
   assert.equal(lapsed.inForce, "lapsed");
 
   const unpaid = estimateTerm({ filingDate: "2012-01-01", grantDate: "2014-01-01", status: "Patented Case", events: [], today: "2026-11-11" });
-  assert.equal(unpaid.inForce, "lapsed", "a missed fee with its grace ended is lapsed even without a status change");
+  assert.equal(unpaid.inForce, "uncertain", "a missing payment event alone is not proof of lapse while ODP records no expiry");
+
+  const smallEntity = estimateTerm({ filingDate: "2014-02-01", grantDate: "2016-03-01", status: "Patented Case", events: [{ description: "Payment of Maintenance Fee, 4th Yr, Small Entity" }, { description: "7.5 yr surcharge - late pmt w/in 6 mo, Small Entity" }], today: "2026-11-11" });
+  assert.equal(smallEntity.inForce, "in-force");
+  assert.deepEqual(smallEntity.maintenance.map((fee) => fee.state), ["paid", "paid", "due-later"]);
+
+  const reinstated = estimateTerm({ filingDate: "2012-05-01", grantDate: "2015-05-05", status: "Patented Case", events: [{ date: "2019-06-01", description: "Expire Patent" }, { date: "2019-09-01", description: "Petition Decision - Accept Late Payment of Maintenance Fees - Granted" }, { description: "Payment of Maintenance Fee, 4th Year, Large Entity" }, { description: "Payment of Maintenance Fee, 8th Year, Large Entity" }], today: "2026-11-11" });
+  assert.equal(reinstated.inForce, "in-force");
+
+  const design = estimateTerm({ applicationType: "DES", filingDate: "2016-01-04", grantDate: "2018-02-06", status: "Patented Case", today: "2026-11-11" });
+  assert.equal(design.inForce, "in-force");
+  assert.equal(design.estimatedExpiry, "2033-02-06");
+  assert.equal(design.maintenance.length, 0);
 
   const old = estimateTerm({ filingDate: "2001-01-01", grantDate: "2004-01-01", status: "Patented Case", events: ["4th", "8th", "12th"].map((year) => ({ description: `Payment of Maintenance Fee, ${year} Year, Large Entity` })), today: "2026-11-11" });
   assert.equal(old.inForce, "expired");
@@ -138,6 +151,8 @@ test("patent term estimate: in force, lapsed, expired, pending", () => {
 
 test("arXiv feed and query translation", () => {
   assert.equal(arxivQuery('"optical sensor" AND drift'), 'all:"optical sensor" AND all:drift');
+  assert.equal(arxivQuery('"reference surface" AND (drift OR offset) AND recalibrat* NOT camera'), 'all:"reference surface" AND all:drift OR all:offset AND all:recalibrat ANDNOT all:camera');
+  assert.equal(plainQuery('applicationMetaData.cpcClassificationBag:"G01B  11/00" AND "reference surface" AND calibrat*'), '"reference surface" AND calibrat');
   const feed = `<feed><entry><id>http://arxiv.org/abs/2101.00001v1</id><published>2021-01-01T00:00:00Z</published>
     <title>Drift   correction for optical sensors</title><summary>We recalibrate &amp; correct drift.</summary>
     <author><name>A. Example</name></author></entry></feed>`;
@@ -161,7 +176,8 @@ test("Windows user environment parsing keeps only allowlisted names", () => {
     "    Path    REG_EXPAND_SZ    C:\\tools",
     "    USPTO_ODP_API_KEY    REG_SZ    example-odp-value",
     "    UNRELATED_SECRET    REG_SZ    keep-out",
-    "    GITHUB_TOKEN    REG_SZ    ",
+    "    GITHUB_TOKEN    REG_SZ    not-allowlisted",
+    "    OPENALEX_API_KEY    REG_SZ    ",
     "",
   ].join("\r\n");
   assert.deepEqual(parseRegQuery(output), { USPTO_ODP_API_KEY: "example-odp-value" });
@@ -187,4 +203,17 @@ test("prior-art search without an ODP key reports the setup step and still retur
   assert.ok(result.notes.some((note) => /USPTO_ODP_API_KEY not set/.test(note)));
   assert.ok(result.queries.patent.length > 0);
   await assert.rejects(() => priorArtSearch({}), /description or at least one query/);
+});
+
+test("rate limiter spaces requests by the minimum interval", async () => {
+  const { RateLimiter } = await import("../src/util/rate.js");
+  const limiter = new RateLimiter(20, 60);
+  const started = Date.now();
+  const stamps: number[] = [];
+  await Promise.all([1, 2, 3].map(async () => {
+    await limiter.acquire();
+    stamps.push(Date.now() - started);
+  }));
+  stamps.sort((a, b) => a - b);
+  assert.ok(stamps[1]! - stamps[0]! >= 55 && stamps[2]! - stamps[1]! >= 55, `stamps ${stamps.join(",")}`);
 });

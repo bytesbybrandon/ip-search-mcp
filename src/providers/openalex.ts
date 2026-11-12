@@ -1,5 +1,6 @@
 import { config } from "../config.js";
 import { requestJson } from "../http.js";
+import { plainQuery } from "../domain/relevance.js";
 import type { ArtHit } from "../types.js";
 
 interface OpenAlexWork {
@@ -31,7 +32,7 @@ export async function searchWorks(query: string, limit = 15): Promise<ArtHit[]> 
     provider: "openalex",
     route: "/works",
     query: {
-      search: query,
+      search: plainQuery(query),
       "per-page": Math.min(limit, 50),
       select: "id,doi,title,display_name,publication_date,abstract_inverted_index,authorships,primary_location",
       api_key: config.providers.openalex.key,

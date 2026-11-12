@@ -68,7 +68,7 @@ The full tool list is in [docs/TOOLS.md](docs/TOOLS.md).
 
 No keys are required to start. Without them, keyed tools return a `CREDENTIAL_MISSING` error with setup instructions, and unkeyed sources remain available. Patent prior-art search needs the free ODP key; papers, preprints, and code search work without keys.
 
-Keys come from the process environment. On Windows and under WSL, a key missing from the process environment is also read once from the Windows user environment, so keys set there need no client restart; set `IP_WINDOWS_ENV=0` to turn that off. A local `.env` file is not loaded automatically; pass it explicitly with `node --env-file=.env dist/src/index.js`. `.env.example` lists every variable and holds no values.
+Keys come from the process environment. On Windows and under WSL, a USPTO, EPO, or OpenAlex key missing from the process environment is also read once from the Windows user environment, so keys set there need no client restart; set `IP_WINDOWS_ENV=0` to turn that off. A local `.env` file is not loaded automatically; pass it explicitly with `node --env-file=.env dist/src/index.js`. `.env.example` lists every variable and holds no values.
 
 See [docs/CREDENTIALS.md](docs/CREDENTIALS.md) for how to obtain each provider key and how keys are isolated.
 
@@ -159,7 +159,7 @@ pnpm test
 
 `pnpm test` runs `node --test` against the compiled output, so build first.
 
-Run the suite with provider keys unset; the server tests assert the missing-credential path, and CI runs without keys.
+The suite clears provider keys before it starts (`test/setup.ts`), so it asserts the missing-credential path and never calls a live provider, locally or in CI.
 
 Type checking alone:
 

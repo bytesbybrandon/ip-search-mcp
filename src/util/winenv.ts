@@ -8,8 +8,9 @@ export const WINDOWS_ENV_NAMES = [
   "EPO_OPS_CLIENT_ID",
   "EPO_OPS_CLIENT_SECRET",
   "OPENALEX_API_KEY",
-  "GITHUB_TOKEN",
 ] as const;
+// GITHUB_TOKEN is deliberately absent: a personal GitHub token can often write, and
+// search needs none, so it is only taken from the process environment.
 
 let memo: Record<string, string> | undefined;
 

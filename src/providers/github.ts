@@ -1,5 +1,6 @@
 import { config } from "../config.js";
 import { requestJson } from "../http.js";
+import { plainQuery } from "../domain/relevance.js";
 import type { ArtHit } from "../types.js";
 
 interface GithubRepo {
@@ -23,7 +24,8 @@ export async function searchRepositories(query: string, limit = 10): Promise<Art
   const result = await requestJson<{ items?: GithubRepo[] }>({
     provider: "github",
     route: "/search/repositories",
-    query: { q: query.replace(/\b(AND)\b/g, " ").replace(/\s+/g, " ").trim(), per_page: Math.min(limit, 50) },
+    // GitHub ANDs bare words and accepts OR and NOT; it has no AND keyword or wildcards.
+    query: { q: plainQuery(query).replace(/\bAND\b/g, " ").replace(/\s+/g, " ").trim(), per_page: Math.min(limit, 50) },
     headers: {
       accept: "application/vnd.github+json",
       "x-github-api-version": "2022-11-28",

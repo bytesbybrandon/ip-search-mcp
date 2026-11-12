@@ -91,11 +91,11 @@ Used for: preprints in `prior_art_search`. No key exists. Requests are spaced at
 
 Used for: public repository search in `prior_art_search`.
 
-Works without a token at 10 searches a minute. Set `GITHUB_TOKEN` to raise that to 30; a fine-grained token with no permissions is enough, because repository search reads public data. Sent only to `api.github.com`.
+Works without a token at 10 searches a minute. Set `GITHUB_TOKEN` in the process or client environment to raise that to 30; a fine-grained token with no permissions is enough, because repository search reads public data. Sent only to `api.github.com`. It is never read from the Windows user environment, where a broader personal token often lives.
 
 ## Windows user environment
 
-On Windows, and under WSL, a variable missing from the process environment is read once per process from the Windows user environment (`reg query HKCU\Environment`, about a tenth of a second). Only the variables this server uses are kept, in memory only. Keys set with `setx` or the System dialog then work without restarting the MCP client and without one PowerShell launch per call. Set `IP_WINDOWS_ENV=0` to disable it.
+On Windows, and under WSL, a USPTO, EPO, or OpenAlex variable missing from the process environment is read once per process from the Windows user environment (`reg query HKCU\Environment`, about a tenth of a second). Only those variables are kept, in memory only; `GITHUB_TOKEN` is excluded. Keys set with `setx` or the System dialog then work without restarting the MCP client and without one PowerShell launch per call. Set `IP_WINDOWS_ENV=0` to disable it.
 
 ## Undocumented surfaces (off by default)
 

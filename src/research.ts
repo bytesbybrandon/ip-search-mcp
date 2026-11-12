@@ -14,7 +14,9 @@ import {
   matchesAll,
   parseBoolean,
   rankDocuments,
+  rankingTerms,
   stem,
+  weightedCoverage,
   wildcard,
   type KeyTerm,
   type RankDocument,
@@ -166,6 +168,7 @@ export function topCpc(wrappers: odp.OdpWrapper[], max = 3): string[] {
 async function patentLeg(
   patentQueries: string[],
   terms: KeyTerm[],
+  rankTerms: KeyTerm[],
   options: { hydrate: number; expand: boolean },
   runs: SearchRun[],
   notes: string[],
@@ -178,9 +181,15 @@ async function patentLeg(
   const rankLists: Array<{ ids: string[]; total: number }> = [];
   await mapLimit(patentQueries, 4, async (query) => {
     try {
-      const result = await odp.searchTitles(query, 50);
+      const result = await odp.searchTitles(query, 100);
+      // ODP pages are newest first; for a moderate result set read up to three
+      // pages so older grants are not cut off. Broad sets stay at one page.
+      const wrappers = [...result.wrappers];
+      for (let offset = 100; offset < Math.min(result.count, 300); offset += 100) {
+        wrappers.push(...(await odp.searchTitles(query, 100, offset)).wrappers);
+      }
       runs.push({ source: "odp", query, count: result.count });
-      rankLists.push({ ids: addWrappers(pool, result.wrappers, `title: ${query}`, result.provenance), total: result.count });
+      rankLists.push({ ids: addWrappers(pool, wrappers, `title: ${query}`, result.provenance), total: result.count });
     } catch (error) {
       runs.push({ source: "odp", query, count: 0, error: message(error) });
     }
@@ -199,7 +208,7 @@ async function patentLeg(
     await mapLimit(topCpc(leaders), 3, async (symbol) => {
       const query = `${odp.cpcQuery(symbol)} AND (${anyTerm})`;
       try {
-        const result = await odp.searchTitles(query, 40);
+        const result = await odp.searchTitles(query, 100);
         runs.push({ source: "odp", query, count: result.count });
         rankLists.push({ ids: addWrappers(pool, result.wrappers, `cpc: ${symbol.replace(/\s+/g, " ")}`, result.provenance), total: result.count });
       } catch (error) {
@@ -209,16 +218,19 @@ async function patentLeg(
   }
 
   // Diversify what gets read in full: the best titles from every query (six
-  // from a specific query with 50 or fewer hits, three up to 200, two from a
+  // from a specific query with 50 or fewer hits, three up to 300, two from a
   // broad one), then the best titles overall, so one crowded term cannot take
   // every slot.
   const order = titleRank();
   const position = new Map(order.map((id, index) => [id, index]));
   const picks = new Set<string>();
-  for (const list of rankLists) {
-    const take = list.total <= 50 ? 6 : list.total <= 200 ? 3 : 2;
-    for (const id of [...new Set(list.ids)].sort((a, b) => (position.get(a) ?? 0) - (position.get(b) ?? 0)).slice(0, take)) picks.add(id);
-  }
+  // Round-robin: every query's best title first, then every query's second,
+  // so the cap trims the deepest picks, never a whole query.
+  const perList = rankLists.map((list) => {
+    const take = list.total <= 50 ? 6 : list.total <= 300 ? 3 : 2;
+    return [...new Set(list.ids)].sort((a, b) => (position.get(a) ?? 0) - (position.get(b) ?? 0)).slice(0, take);
+  });
+  for (let round = 0; round < 6; round += 1) for (const list of perList) if (list[round]) picks.add(list[round]!);
   for (const id of order) {
     if (picks.size >= options.hydrate) break;
     picks.add(id);
@@ -227,7 +239,7 @@ async function patentLeg(
   await hydrate(firstWave, notes);
 
   if (options.expand) {
-    const ranked = rankDocuments(firstWave.filter((entry) => entry.full).map((entry) => patentDoc(patentId(entry.wrapper), entry)), terms);
+    const ranked = rankDocuments(firstWave.filter((entry) => entry.full).map((entry) => patentDoc(patentId(entry.wrapper), entry)), rankTerms);
     const leaders = ranked.slice(0, 5).map((result) => pool.get(result.id)!);
     const cited = [...new Set(leaders.flatMap((entry) => entry.full?.citedUs ?? []).filter((number) => /^\d{6,8}$/.test(number) && !pool.has(`US${number}`)))];
     const added: PatentEntry[] = [];
@@ -271,7 +283,7 @@ async function artLeg(textQueries: string[], sources: ArtSource[], runs: SearchR
   for (const query of textQueries) {
     if (sources.includes("papers")) jobs.push({ source: "openalex", query, run: () => openalex.searchWorks(query, 15) });
     if (sources.includes("preprints")) jobs.push({ source: "arxiv", query, run: () => arxiv.searchArxiv(query, 10) });
-    if (sources.includes("code")) jobs.push({ source: "github", query, run: () => github.searchRepositories(query.replace(/"/g, ""), 10) });
+    if (sources.includes("code")) jobs.push({ source: "github", query, run: () => github.searchRepositories(query, 10) });
   }
   const results = await mapLimit(jobs, 4, async (job) => {
     try {
@@ -302,7 +314,13 @@ export async function priorArtSearch(input: SearchInput): Promise<SearchOutput> 
   if (!description && explicit.length === 0) throw new IpError("INVALID_INPUT", "give a description or at least one query");
   const sources = input.sources?.length ? input.sources : [...ALL_SOURCES];
   const generated = generateQueries(description ?? explicit.join(" "));
-  const terms = description ? generated.terms : keyTerms(explicit.join(" ").replace(/\b(AND|OR|NOT)\b/g, " "), 10);
+  const queryText = explicit.join(" ").replace(/\b(AND|OR|NOT)\b/g, " ").replace(/[*"()]/g, " ");
+  // A user's trailing wildcard (calibrat*) stays a prefix in later CPC queries and in the output.
+  const prefixes = new Set([...explicit.join(" ").matchAll(/([a-z0-9-]{3,})\*/gi)].map((match) => match[1]!.toLowerCase()));
+  const markPrefix = (term: KeyTerm): KeyTerm => (prefixes.has(term.term) ? { ...term, term: `${term.term}*`, stem: term.term } : term);
+  const terms = (description ? generated.terms : keyTerms(queryText, 10)).map(markPrefix);
+  // Ranking uses a longer, damped term list than query generation.
+  const rankTerms = rankingTerms(description ?? queryText, 30).map(markPrefix);
   const patentQueries = explicit.length > 0 ? explicit : generated.patentQueries;
   const textQueries = explicit.length > 0 ? explicit.slice(0, 3) : generated.textQueries;
   const clausesPerQuery = explicit.map((query) => ({ query, clauses: parseBoolean(query) }));
@@ -311,7 +329,7 @@ export async function priorArtSearch(input: SearchInput): Promise<SearchOutput> 
 
   const [pool, art] = await Promise.all([
     sources.includes("patents")
-      ? patentLeg(patentQueries, terms, { hydrate: input.hydrate ?? 50, expand: input.expand ?? true }, runs, notes)
+      ? patentLeg(patentQueries, terms, rankTerms, { hydrate: input.hydrate ?? 50, expand: input.expand ?? true }, runs, notes)
       : Promise.resolve(new Map<string, PatentEntry>()),
     artLeg(textQueries, sources, runs),
   ]);
@@ -356,17 +374,17 @@ export async function priorArtSearch(input: SearchInput): Promise<SearchOutput> 
   }
 
   // Patents (claims and description) and abstracts differ in length by two
-  // orders of magnitude, so rank each group on its own statistics, normalize
-  // to its best hit, then merge on normalized score and term coverage.
+  // orders of magnitude, so BM25 is normalized within each group. The merged
+  // score adds how much of the description's term weight a document covers,
+  // which a short repository blurb cannot fake.
   const groupOf = (id: string): string => (pool.has(id) ? "patent" : meta.get(id)?.source === "code" ? "code" : "literature");
   const ranked = ["patent", "literature", "code"].flatMap((group) => {
-    const results = rankDocuments(documents.filter((doc) => groupOf(doc.id) === group), terms);
+    const results = rankDocuments(documents.filter((doc) => groupOf(doc.id) === group), rankTerms);
     const top = results[0]?.score || 1;
     return results.map((result) => {
       const text = texts.get(result.id) ?? "";
       const matchedQueries = clausesPerQuery.filter((entry) => matchesAll(entry.clauses, text)).map((entry) => entry.query);
-      const coverage = terms.length ? result.matched.length / terms.length : 0;
-      let score = 0.7 * (result.score / top) + 0.3 * coverage;
+      let score = 0.5 * weightedCoverage(rankTerms, result.matched) + 0.5 * (result.score / top);
       // An explicit boolean query that the document's own text does not satisfy halves its score.
       if (clausesPerQuery.length > 0 && matchedQueries.length === 0) score /= 2;
       return { ...result, score: Math.round(score * 1000) / 1000, matchedQueries };
@@ -379,12 +397,12 @@ export async function priorArtSearch(input: SearchInput): Promise<SearchOutput> 
     const base = meta.get(result.id)!;
     const entry = pool.get(result.id);
     const claimsText = entry?.full?.claims.filter((claim) => claim.independent).map((claim) => claim.text).join(" ");
-    const passage = bestPassage(claimsText || texts.get(result.id) || "", terms);
+    const passage = bestPassage(claimsText || texts.get(result.id) || "", rankTerms.slice(0, 12));
     return {
       ...base,
       rank: index + 1,
       score: result.score,
-      coverage: terms.length ? Math.round((result.matched.length / terms.length) * 100) / 100 : 0,
+      coverage: Math.round(weightedCoverage(rankTerms, result.matched) * 100) / 100,
       matched: result.matched,
       missing: result.missing,
       matchedQueries: result.matchedQueries,
@@ -474,6 +492,7 @@ export async function readPatent(identifier: string, description?: string): Prom
   }
   const term = estimateTerm({
     status: meta.applicationStatusDescriptionText,
+    applicationType: meta.applicationTypeCode ?? meta.applicationTypeLabelName,
     filingDate: meta.filingDate,
     earliestNonProvisionalDate: earliest,
     grantDate: meta.grantDate,

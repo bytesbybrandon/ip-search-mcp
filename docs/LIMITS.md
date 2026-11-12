@@ -4,7 +4,7 @@
 
 - **No official USPTO trademark search API exists.** TSDR is identifier lookup only. The Trademark Search web app has no documented API; its backend is used by the UI and carries terms-of-use risk. Real discovery requires either that backend, a local index over the trademark daily XML, or a paid third party.
 - **PatentsView is gone.** The legacy API was retired in May 2025 and the Search API shut down in March 2026; its data moved to ODP bulk products, its host no longer resolves, and new keys cannot be requested. Any guide pointing at `api.patentsview.org` or `search.patentsview.org` is stale. This server does not use it.
-- **No free, documented API searches the full text of US patents.** ODP search matches titles and metadata only. `prior_art_search` therefore finds patent candidates by title, CPC class, and citation links, and reads full text and claims only for those candidates. A patent whose title, classes, and citations miss every query is not seen. In one test against a hand search, four of six known references were found this way and two were not. For true full-text recall, build the local index over bulk grant XML or use a commercial database.
+- **This server has no full-text patent search source.** The documented ODP search API matches titles and metadata only. `prior_art_search` therefore finds patent candidates by title, CPC class, and citation links, and reads full text and claims only for those candidates. A patent whose title, classes, and citations miss every query is not seen, even when its claims read on the description. For full-text recall, build the local index over bulk grant XML or use a full-text patent database.
 - **ODP API documentation requires a USPTO.gov sign-in.** Endpoint paths in this server come from the published OpenAPI surface and a bound client; response shapes for fields not exercised here can differ and surface as raw payloads rather than normalized hits.
 - **EPO OPS is not a US legal record.** It is bibliographic and family data; verify status and documents against USPTO records.
 
@@ -22,10 +22,11 @@ Observed with real USPTO keys, then encoded in the tests and provider code.
 
 ## Prior-art search
 
-- Query generation uses term frequency in your description. A long description that repeats a generic word (for example "key" or "node") can push a specific term down the list; describe one feature at a time, or pass `queries` yourself.
+- Query generation uses term frequency in your description. A long description that repeats a generic word (for example "device" or "signal") can push a specific term down the list; describe one feature at a time, or pass `queries` yourself.
 - Ranking is BM25 over the candidate pool, weighted toward claims. It orders references for human review. It is not a novelty, obviousness, or infringement judgment.
 - Forward citations come from the ODP Office Action Enriched Citation API, so they cover examiner citations in office actions only, not every later patent that cites a reference.
-- `patent_read` estimates expiry from the earliest non-provisional filing plus 20 years plus term adjustment, and marks a patent lapsed when ODP records expiry or a maintenance fee window has closed without a payment event. Terminal disclaimers, term extensions, and reinstatements are not visible.
+- `patent_read` estimates expiry from the earliest non-provisional filing plus 20 years plus term adjustment (design patents: 15 or 14 years from grant). It marks a patent lapsed only when ODP records expiry or a nonpayment status, and reports `uncertain` when a fee window has closed with no payment event but ODP still shows the patent as standing. A granted petition to accept a late fee counts as reinstatement. Terminal disclaimers and term extensions are not visible.
+- ODP publishes its rate limits behind the USPTO.gov sign-in. This server paces every ODP call, searches and full-text file reads alike, through one 60-per-minute bucket and backs off on HTTP 429 with `Retry-After`. Over a few hundred file reads in testing, no 429 was returned.
 - OpenAlex without a key shares one small daily budget per network address. arXiv asks for one request every three seconds. GitHub allows 10 searches a minute without a token. When a source fails or runs out, the search returns the other sources and lists the failed runs.
 
 ## Search quality
@@ -60,7 +61,7 @@ Formats: SVG only. PDF and PNG are not parsed; convert a sheet to SVG or validat
 
 `disclosure_review` does arithmetic on dates you supply. It does not know about the inventor's earlier priority filing, derivation proceedings, experimental use, or national exceptions beyond the flags it states. Confirm every date with counsel.
 
-The foreign table is a lay summary with statute citations (EPC Art. 55, UK Patents Act s. 2(4), PatG § 3(5), CPI L611-13, PRC Patent Law Art. 24, Japan Patent Act Art. 30, Korea Patent Act Art. 30, Canada Patent Act s. 28.2, Australia reg. 2.2(1A), Brazil Law 9.279 Art. 12, India Patents Act s. 31). It counts 12 months from the disclosure date. Canada and Australia count back from the national filing date, not the US priority date, and Japan and Korea require a claim and proof at filing. Counsel should confirm each provision against current text.
+The foreign table is a lay summary with statute citations (EPC Art. 55 and Rule 25, UK Patents Act s. 2(4), PatG § 3(5), CPI L611-13, PRC Patent Law Art. 24 and Implementing Regulations Rule 33, Japan Patent Act Art. 30, Korea Patent Act Art. 30, Canada Patent Act s. 28.2, Australia Patents Regulations reg. 2.2C, Brazil Law 9.279 Art. 12, India Patents Act ss. 29, 31, and 32), checked against primary text in November 2026. It counts the grace from the disclosure date. Japan, Korea, Canada, and Australia count back from the national or PCT international filing date, not a US priority date; China and Brazil count from the priority date. Japan and Korea require a claim and proof. Counsel should confirm each provision before relying on it.
 
 ## Undocumented provider risk
 

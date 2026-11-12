@@ -50,58 +50,58 @@ export interface GraceRule {
 export const GRACE_RULES: readonly GraceRule[] = [
   {
     code: "EP", name: "European Patent Office", graceMonths: 0, kind: "none", measuredFrom: "filing date",
-    citation: "EPC Art. 54(2), Art. 55(1)",
-    conditions: "No grace for the applicant's own disclosure. Art. 55 excuses only an evident abuse against the applicant or display at an officially recognised international exhibition, within 6 months before filing; exhibition requires a statement at filing and a certificate within 4 months (Rule 25).",
+    citation: "EPC Art. 54(2), Art. 55(1)-(2); Rule 25",
+    conditions: "No grace for the applicant's own disclosure. Art. 55 excuses only an evident abuse against the applicant or display at an officially recognised international exhibition, within 6 months before the actual EP filing date (a priority date does not move it back). Exhibition: state it at filing and file the certificate within 4 months (Rule 25).",
   },
   {
     code: "GB", name: "United Kingdom", graceMonths: 0, kind: "none", measuredFrom: "filing date",
-    citation: "Patents Act 1977 s. 2(4)",
-    conditions: "No grace for the applicant's own disclosure. Only a disclosure made in breach of confidence or by unlawful obtaining, or display at a recognised international exhibition, within 6 months before filing.",
+    citation: "Patents Act 1977 s. 2(4)-(5); Patents Rules 2007 r. 5",
+    conditions: "No grace for the applicant's own disclosure. Only a disclosure made in breach of confidence or by unlawful obtaining, or display at a recognised international exhibition, within 6 months before filing. Exhibition: written statement at filing, evidence within 4 months.",
   },
   {
     code: "DE", name: "Germany", graceMonths: 0, kind: "none", measuredFrom: "filing date",
     citation: "Patentgesetz § 3(5); Gebrauchsmustergesetz § 3(1)",
-    conditions: "Patent: abuse or recognised exhibition within 6 months only. A German utility model keeps a 6-month grace for the applicant's own disclosure.",
+    conditions: "Patent: abuse or recognised exhibition within 6 months before filing only. A German utility model keeps a 6-month grace for disclosures based on the applicant's own work, counted from its priority date.",
   },
   {
     code: "FR", name: "France", graceMonths: 0, kind: "none", measuredFrom: "filing date",
-    citation: "Code de la propriété intellectuelle art. L611-13",
-    conditions: "Abuse or recognised international exhibition within 6 months only.",
+    citation: "Code de la propriété intellectuelle art. L611-13, R612-22",
+    conditions: "Abuse or recognised international exhibition within 6 months before filing only. Exhibition: declare at filing, proof within 4 months.",
   },
   {
-    code: "CN", name: "China", graceMonths: 6, kind: "narrow", measuredFrom: "filing date",
-    citation: "Patent Law of the PRC (2020) Art. 24; Implementing Regulations Rule 33",
-    conditions: "Narrow 6-month exceptions only: disclosure in the public interest during a national emergency, first exhibition at a government-sponsored or recognised international exhibition, first publication at a prescribed academic or technical meeting, or disclosure without the applicant's consent. A declaration and proof are required. Ordinary self-publication is not covered.",
+    code: "CN", name: "China", graceMonths: 6, kind: "narrow", measuredFrom: "priority date",
+    citation: "Patent Law of the PRC (2020) Art. 24; Implementing Regulations (2023) Rules 12, 33, 124",
+    conditions: "Narrow 6-month exceptions only, counted from the priority date where one is claimed: first disclosure in the public interest during a national emergency, first exhibition at a government-sponsored or recognised international exhibition, first publication at a prescribed academic or technical meeting, or disclosure without the applicant's consent. Exhibitions and meetings: declare at filing, proof within 2 months. Ordinary self-publication is not covered.",
   },
   {
     code: "JP", name: "Japan", graceMonths: 12, kind: "conditional", measuredFrom: "filing date",
-    citation: "Patent Act Art. 30(2)-(3) (12 months since the 2018 amendment)",
-    conditions: "Applies to the right holder's own disclosure. The application must state the exception at filing and proof must be filed within 30 days of filing. A disclosure in a patent gazette (an earlier patent publication) is not covered.",
+    citation: "Patent Act Art. 30(1)-(4) (12 months for applications filed from 2018-06-09); Art. 184-14",
+    conditions: "Covers the right holder's own disclosure, except publication in a patent, utility model, design, or trademark gazette. Counted back from the Japanese filing date or the PCT international filing date, not a Paris priority date. State the exception at filing and file proof within 30 days.",
   },
   {
     code: "KR", name: "Republic of Korea", graceMonths: 12, kind: "conditional", measuredFrom: "filing date",
-    citation: "Patent Act Art. 30(1)-(3)",
-    conditions: "Applies to the right holder's own disclosure. The exception must be claimed (at filing or within the later periods the Act allows, with a fee) and proof filed. A disclosure in a domestic or foreign patent gazette is not covered.",
+    citation: "Patent Act Art. 30(1)-(3); Arts. 199-200",
+    conditions: "Covers the right holder's own disclosure, except publication of a Korean or foreign application or registration. Counted back from the Korean filing date or the PCT international filing date. Claim it at filing with proof within 30 days, or later for a fee (during the amendment period or within 3 months of the decision to grant).",
   },
   {
     code: "CA", name: "Canada", graceMonths: 12, kind: "conditional", measuredFrom: "filing date",
     citation: "Patent Act s. 28.2(1)(a)",
-    conditions: "Disclosure by the applicant, or by someone who obtained the information from the applicant, more than 12 months before the Canadian filing date is prior art. The year runs back from the actual Canadian filing date, not the priority date.",
+    conditions: "Disclosure by the applicant, or by someone who obtained the information directly or indirectly from the applicant, is excused within the year before the Canadian filing date, not the priority date. No declaration is required.",
   },
   {
     code: "AU", name: "Australia", graceMonths: 12, kind: "conditional", measuredFrom: "filing date",
-    citation: "Patents Act 1990 s. 24(1)(a); Patents Regulations 1991 reg. 2.2(1A)",
-    conditions: "Publication or use by or with the consent of the patentee or nominated person is disregarded if a complete application is filed within 12 months. Runs from the Australian complete-application filing date; no declaration is required.",
+    citation: "Patents Act 1990 s. 24(1); Patents Regulations 1991 reg. 2.2C (also 2.2-2.2D)",
+    conditions: "Publication or use by or with the consent of the patentee or nominated person is disregarded if a complete application is filed within 12 months of it. A provisional filing does not anchor this general grace. No declaration is required.",
   },
   {
     code: "BR", name: "Brazil", graceMonths: 12, kind: "general", measuredFrom: "priority date",
     citation: "Industrial Property Law 9.279/1996 Art. 12",
-    conditions: "Disclosure by the inventor, by INPI, or by a third party using information from the inventor within 12 months before filing or the priority date is not prior art. Evidence may be requested.",
+    conditions: "Disclosure by the inventor, by INPI publishing an application filed without the inventor's consent, or by a third party using information from the inventor, within 12 months before the filing or priority date, is not prior art. INPI may require a declaration with proof.",
   },
   {
     code: "IN", name: "India", graceMonths: 12, kind: "narrow", measuredFrom: "filing date",
-    citation: "Patents Act 1970 s. 31",
-    conditions: "Narrow 12-month exceptions only: display or use at an exhibition notified by the Government, a paper read before a learned society, or a public trial working. Ordinary self-publication is not covered.",
+    citation: "Patents Act 1970 ss. 29(2)-(3), 31, 32",
+    conditions: "Narrow exceptions only: display at an exhibition notified by the Government or a paper read before a learned society, if the application follows within 12 months (s. 31); public working for reasonable trial within the year before the priority date (s. 32); publication without consent (s. 29). Ordinary self-publication is not covered.",
   },
 ];
 
@@ -237,7 +237,7 @@ export function assessDisclosure(facts: DisclosureFacts): DisclosureAssessment {
     actions.push("For jurisdictions without a general grace period (EP, GB, DE, FR, and CN or IN outside their narrow exceptions), only a filing date before the first public disclosure preserves novelty.");
   }
   if (jurisdictions.some((entry) => entry.status === "open" && entry.code !== "US")) {
-    actions.push("Where a foreign 12-month grace applies, meet its formalities (JP and KR: claim the exception and file proof; CA and AU: count from the national filing date, not the US priority date).");
+    actions.push("Where a foreign 12-month grace applies, meet its formalities (JP and KR: claim the exception and file proof; JP, KR, CA, and AU count back from the national or PCT international filing date, not the US priority date).");
   }
   if (facts.byInventor === false) {
     actions.push("Establish whether the third-party disclosure derives from the inventor (35 U.S.C. 102(b)(1)(B)) and document the evidence.");

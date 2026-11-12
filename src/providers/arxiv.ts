@@ -1,5 +1,6 @@
 import { requestText } from "../http.js";
 import type { Provenance } from "../http.js";
+import { plainQuery } from "../domain/relevance.js";
 import type { ArtHit } from "../types.js";
 
 function decode(text: string): string {
@@ -31,15 +32,31 @@ export function parseArxivFeed(xml: string, provenance: Provenance): ArtHit[] {
   return hits;
 }
 
-/** Turn `"exact phrase" word` into arXiv's field syntax: all:"exact phrase" AND all:word. Perf: P0 · O(n) · CRAP <= 10 (CC 2). */
+/**
+ * Turn `"exact phrase" word OR other` into arXiv's field syntax:
+ * all:"exact phrase" AND all:word OR all:other. Adjacent terms are ANDed; NOT becomes ANDNOT.
+ * Perf: P0 · O(n) · CRAP <= 10 (CC 5).
+ */
 export function arxivQuery(query: string): string {
-  const parts = (query.match(/"[^"]+"|\S+/g) ?? []).filter((part) => !/^(AND|OR|NOT)$/.test(part));
-  return parts.map((part) => `all:${part.startsWith('"') ? part : part.replace(/[^\w-]/g, "")}`).join(" AND ");
+  const out: string[] = [];
+  let operator = "";
+  for (const part of plainQuery(query).match(/"[^"]+"|\S+/g) ?? []) {
+    if (/^(AND|OR|NOT)$/.test(part)) {
+      operator = part === "NOT" ? "ANDNOT" : part;
+      continue;
+    }
+    const term = part.startsWith('"') ? part : part.replace(/[^\w-]/g, "");
+    if (!term) continue;
+    if (out.length > 0) out.push(operator || "AND");
+    out.push(`all:${term}`);
+    operator = "";
+  }
+  return out.join(" ");
 }
 
 /**
  * arXiv API search. No key. The arXiv API terms ask for no more than one
- * request every three seconds, enforced here with a 20-per-minute bucket.
+ * request every three seconds; the limiter spaces requests 3.1 s apart.
  * Perf: P1 · one request, cached 24 h · CRAP <= 10 (CC 1).
  */
 export async function searchArxiv(query: string, limit = 10): Promise<ArtHit[]> {
@@ -47,7 +64,7 @@ export async function searchArxiv(query: string, limit = 10): Promise<ArtHit[]> 
     provider: "arxiv",
     route: "/api/query",
     query: { search_query: arxivQuery(query), start: 0, max_results: Math.min(limit, 50) },
-    rateLimit: { name: "arxiv:default", perMinute: 20 },
+    rateLimit: { name: "arxiv:default", perMinute: 20, minIntervalMs: 3_100 },
     cache: { ttlMs: 24 * 60 * 60_000 },
   });
   return parseArxivFeed(result.text, result.provenance);

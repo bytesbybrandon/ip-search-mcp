@@ -17,7 +17,7 @@ const STOPWORDS = new Set(
     "according associated corresponding respective first second third thereof therein whereby herein example examples feature features " +
     "product products user users data value values set sets number numbers given another call calls calling level levels keep keeps " +
     "every sits sit created create creates auto core optionally optional separate separately standalone only means mean meaning whole " +
-    "whose form forms along across axis axes way today shipped ships nothing something anything three four five several each"
+    "becomes become beside built readme counts whose form forms along across axis axes way today shipped ships nothing something anything three four five several each"
   ).split(/\s+/),
 );
 
@@ -86,6 +86,23 @@ export function keyTerms(description: string, max = 12): KeyTerm[] {
     .slice(0, max);
 }
 
+/**
+ * Terms for ranking: a longer list than the query terms, with weights damped
+ * (1 + ln w) so one word repeated many times cannot dominate the score.
+ * Perf: P1 · O(n log n) · CRAP <= 10 (CC 1).
+ */
+export function rankingTerms(text: string, max = 30): KeyTerm[] {
+  return keyTerms(text, max).map((term) => ({ ...term, weight: Math.round((1 + Math.log(term.weight)) * 1000) / 1000 }));
+}
+
+/** Share of the total term weight a document matches. Perf: P0 · O(terms) · CRAP <= 10 (CC 2). */
+export function weightedCoverage(terms: KeyTerm[], matched: string[]): number {
+  const total = terms.reduce((sum, term) => sum + term.weight, 0);
+  if (total === 0) return 0;
+  const hit = new Set(matched);
+  return terms.filter((term) => hit.has(term.term)).reduce((sum, term) => sum + term.weight, 0) / total;
+}
+
 /** Adjacent content-word pairs that occur at least twice, as candidate phrases. Perf: P1 · O(n) · CRAP <= 10 (CC 3). */
 export function keyPhrases(description: string, max = 4): string[] {
   const words = tokenize(description);
@@ -129,7 +146,7 @@ export function generateQueries(description: string, max = 21): GeneratedQueries
   const phrases = keyPhrases(description);
   const patentQueries: string[] = [];
   // Two anchors, each ANDed with the next terms: one generic anchor (a word
-  // like "key") cannot then crowd out the specific pairings.
+  // like "device") cannot then crowd out the specific pairings.
   const anchors = terms.slice(0, 2);
   const others = terms.slice(2, 12);
   if (anchors.length === 2) patentQueries.push(`${wildcard(anchors[0]!)} AND ${wildcard(anchors[1]!)}`);
@@ -143,6 +160,22 @@ export function generateQueries(description: string, max = 21): GeneratedQueries
     [terms[1], terms[4], terms[5]].filter(Boolean).map((term) => term!.term).join(" "),
   ].filter((query, index, all) => query && all.indexOf(query) === index);
   return { terms, phrases, patentQueries: [...new Set(patentQueries)].slice(0, max), textQueries: textQueries.slice(0, 3) };
+}
+
+/**
+ * Strip USPTO-only syntax (field:value terms, trailing wildcards, parentheses)
+ * so a boolean query can go to engines that only take words, quoted phrases,
+ * AND, OR and NOT. Perf: P0 · O(n) · CRAP <= 10 (CC 2).
+ */
+export function plainQuery(query: string): string {
+  // A field term may carry a quoted value with spaces (field:"G01B  11/00"); keep it one token.
+  return (query.match(/[^\s"]*"[^"]*"|\S+/g) ?? [])
+    .filter((token) => token.startsWith('"') || !token.includes(":"))
+    .map((token) => (token.startsWith('"') ? token : token.replace(/[()*]/g, "")))
+    .filter(Boolean)
+    .join(" ")
+    .replace(/^(AND|OR|NOT)\s+|\s+(AND|OR|NOT)$/g, "")
+    .trim();
 }
 
 /** One AND clause: any of its alternatives must match. Phrases are exact word sequences; `*` is a prefix. */

@@ -28,6 +28,8 @@ export interface OdpSearchParams {
 
 interface OdpApplicationMeta {
   patentNumber?: string;
+  applicationTypeCode?: string;
+  applicationTypeLabelName?: string;
   inventionTitle?: string;
   patentTitle?: string;
   filingDate?: string;
@@ -272,14 +274,15 @@ const FULLTEXT_TTL_MS = 30 * 24 * 60 * 60_000;
  * phrases, trailing `*`). Thin wrapper that applies the longer search cache.
  * Perf: P1 · one request · CRAP <= 10 (CC 2).
  */
-export async function searchTitles(q: string, limit = 50): Promise<{ count: number; wrappers: OdpWrapper[]; provenance: Provenance }> {
+export async function searchTitles(q: string, limit = 100, offset = 0): Promise<{ count: number; wrappers: OdpWrapper[]; provenance: Provenance }> {
   try {
     const result = await requestJson<OdpSearchResponse>({
       provider: "odp",
       route: "/api/v1/patent/applications/search",
       method: "POST",
       headers: headers(),
-      body: { q, pagination: { offset: 0, limit } },
+      // ODP rejects page sizes above 100.
+      body: { q, pagination: { offset, limit: Math.min(limit, 100) } },
       rateLimit: { name: "odp:default", perMinute: 60 },
       cache: { ttlMs: SEARCH_TTL_MS },
     });
