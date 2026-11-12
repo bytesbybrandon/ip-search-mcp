@@ -15,6 +15,8 @@ export const FTO_CHARTED = 5;
 export const FTO_MAX_READS = 15;
 /** Other archived pages on a host searched when a URL has no capture of its own. */
 export const WAYBACK_FALLBACK_PAGES = 3;
+/** Ranked results kept from the search so the patent pool, not a short merged list, supplies charting candidates. */
+export const SEARCH_WINDOW = 200;
 
 export interface TimelineEvent {
   date: string;
@@ -102,36 +104,45 @@ function message(error: unknown): string {
  * have been captured as a redirect) falls back to at most
  * WAYBACK_FALLBACK_PAGES other archived HTML pages on its host; every event
  * names the page it came from, never the URL that was asked about. Returns
- * whether anything could not be checked.
- * Perf: P2 · 1 + pages CDX requests and at most about 15 fetches per page · CRAP <= 20 (CC 11).
+ * whether a match may have been missed or dated too late: a failed fetch, a
+ * Wayback history longer than WAYBACK_CAPTURE_LIMIT with no match in its
+ * oldest captures, or a fallback that left pages unsearched and found nothing.
+ * Perf: P2 · 1 + pages CDX requests and at most about 15 fetches per page · CRAP <= 20 (CC 14).
  */
 async function waybackTimeline(url: string, signatures: string[], timeline: TimelineEvent[], notes: string[]): Promise<boolean> {
   let incomplete = false;
+  let matched = false;
+  let unsearchedPages = false;
   try {
     const direct = await archives.waybackCaptures(url);
     let pages = [url];
     if (direct.length === 0) {
-      pages = await archives.waybackPages(new URL(url).host, WAYBACK_FALLBACK_PAGES);
+      const hostPages = await archives.waybackPages(new URL(url).host, WAYBACK_FALLBACK_PAGES + 1);
+      pages = hostPages.slice(0, WAYBACK_FALLBACK_PAGES);
+      unsearchedPages = hostPages.length > pages.length;
       notes.push(
         pages.length > 0
-          ? `wayback: no direct capture of ${url}; searched ${pages.length} other archived page(s) on its host (at most ${WAYBACK_FALLBACK_PAGES}): ${pages.join(", ")}`
+          ? `wayback: no direct capture of ${url}; searched ${pages.length} other archived page(s) on its host (at most ${WAYBACK_FALLBACK_PAGES}${unsearchedPages ? "; more exist" : ""}): ${pages.join(", ")}`
           : `wayback: no capture of ${url} or of any other archived HTML page on its host`,
       );
     }
     for (const page of pages) {
       const captures = page === url ? direct : await archives.waybackCaptures(page);
       if (captures[0]) timeline.push({ date: captures[0].date, source: "wayback", url: page, kind: "capture" });
-      if (captures.length >= archives.WAYBACK_CAPTURE_LIMIT) {
-        notes.push(`wayback: ${page} has at least ${captures.length} distinct captures; only the oldest ${archives.WAYBACK_CAPTURE_LIMIT} were searched, so a feature that first appeared later is not found`);
-      }
       const { found, failed } = await earliestWaybackMatch(captures, signatures);
-      if (found) timeline.push({ date: found.capture.date, source: "wayback", url: page, kind: "match", signature: found.signature });
-      else if (captures.length > 0) notes.push(`wayback: no capture of ${page} contains a signature`);
+      if (found) {
+        matched = true;
+        timeline.push({ date: found.capture.date, source: "wayback", url: page, kind: "match", signature: found.signature });
+      } else if (captures.length >= archives.WAYBACK_CAPTURE_LIMIT) {
+        incomplete = true;
+        notes.push(`wayback: none of the oldest ${archives.WAYBACK_CAPTURE_LIMIT} captures of ${page} contains a signature, and it has more; a feature that first appeared later is not found`);
+      } else if (captures.length > 0) notes.push(`wayback: no capture of ${page} contains a signature`);
       if (failed > 0) {
         incomplete = true;
         notes.push(`wayback: ${failed} capture fetch(es) of ${page} failed; ${found ? `the earliest match may be earlier than ${found.capture.date.slice(0, 10)}` : "a match may have been missed"}`);
       }
     }
+    if (unsearchedPages && !matched) incomplete = true;
   } catch (error) {
     incomplete = true;
     notes.push(`wayback ${url} failed: ${message(error)}`);
@@ -284,6 +295,22 @@ export interface VetInput {
 }
 
 /**
+ * What charting left out: candidates that could not be read, and, when fewer
+ * than `charted` patents were charted, lower-ranked patents never read because
+ * the read cap was reached or the search window was full.
+ * Perf: P0 · O(skipped) · CRAP <= 10 (CC 5).
+ */
+export function ftoGaps(fto: Pick<Awaited<ReturnType<typeof ftoCharts>>, "charts" | "skipped">, patentCount: number, windowFull: boolean): string[] {
+  const unreadable = fto.skipped.filter((entry) => entry.unreadable).length;
+  return [
+    ...(unreadable > 0 ? [`${unreadable} candidate patent(s) could not be charted (not read, or claims not readable)`] : []),
+    ...(fto.charts.length < FTO_CHARTED && (patentCount > FTO_MAX_READS || windowFull)
+      ? [`only the top ${Math.min(patentCount, FTO_MAX_READS)} ranked granted patents were read for charting and fewer than ${FTO_CHARTED} could be charted; lower-ranked patents were not read`]
+      : []),
+  ];
+}
+
+/**
  * What a prior-art search could not cover: skipped or failed sources and
  * unread full texts. Perf: P0 · O(runs + notes) · CRAP <= 10 (CC 5).
  */
@@ -309,12 +336,13 @@ function failedRunNotes(runs: SearchOutput["runs"]): string[] {
 
 /**
  * Vet one feature: prior-art search, element charts for the first
- * FTO_CHARTED in-force patents (reading at most FTO_MAX_READS candidates),
- * disclosure scan, verdict, provisional-ready section, fingerprints.
- * Perf: P2 · one prior-art search plus up to FTO_MAX_READS patent reads · CRAP <= 20 (CC 11).
+ * FTO_CHARTED in-force patents (reading at most FTO_MAX_READS candidates from
+ * the SEARCH_WINDOW best-ranked results), disclosure scan, verdict,
+ * provisional-ready section, fingerprints.
+ * Perf: P2 · one prior-art search plus up to FTO_MAX_READS patent reads · CRAP <= 20 (CC 10).
  */
 async function vetFeature(feature: Feature, input: VetInput): Promise<FeatureVet> {
-  const search = await priorArtSearch({ description: feature.description, limit: 25, hydrate: 30 });
+  const search = await priorArtSearch({ description: feature.description, limit: SEARCH_WINDOW, hydrate: 30 });
   const patents = search.results.filter((hit) => hit.source === "patent" && !hit.id.startsWith("US-APP-"));
   const fto = await ftoCharts(patents.slice(0, FTO_MAX_READS).map((hit) => hit.id.replace(/^US/, "")), feature.description, FTO_CHARTED);
   const given = feature.signatures?.length ? feature.signatures : input.signatures;
@@ -323,10 +351,7 @@ async function vetFeature(feature: Feature, input: VetInput): Promise<FeatureVet
   if (signatures.length > 0 && !given?.length) {
     notes.push(`Signatures were derived from the description (${signatures.join("; ")}), not given: a generic phrase can match ordinary page copy. Pass the exact strings that would show this feature for a reliable check.`);
   }
-  const gaps = searchGaps(search);
-  const unreadable = fto.skipped.filter((entry) => entry.unreadable).length;
-  if (unreadable > 0) gaps.push(`${unreadable} candidate patent(s) could not be charted (not read, or claims not readable)`);
-  if (fto.charts.length < FTO_CHARTED && patents.length > FTO_MAX_READS) gaps.push(`only the top ${FTO_MAX_READS} granted candidates were read for charting; ${patents.length - FTO_MAX_READS} more were not`);
+  const gaps = [...searchGaps(search), ...ftoGaps(fto, patents.length, search.results.length >= SEARCH_WINDOW)];
   let disclosure: DisclosureScan | undefined;
   let disclosureSkipped: string | undefined;
   if (!input.sites || input.sites.length === 0) disclosureSkipped = "no sites given; pass the public pages to check";

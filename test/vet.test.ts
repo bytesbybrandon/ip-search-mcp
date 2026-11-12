@@ -7,7 +7,7 @@ import { decide, deriveSignatures, fingerprints, provisionalSection, splitFeatur
 import { parseArgs } from "../src/axi/args.js";
 import { specs } from "../src/axi/commands.js";
 import { LIVE_PAGE_LIMIT, livePage, parseTimemap, waybackDate, type Capture } from "../src/providers/archives.js";
-import { disclosureScan, earliestWaybackMatch, ftoCharts, searchGaps, WAYBACK_FALLBACK_PAGES } from "../src/vet.js";
+import { disclosureScan, earliestWaybackMatch, FTO_CHARTED, FTO_MAX_READS, ftoCharts, ftoGaps, searchGaps, WAYBACK_FALLBACK_PAGES } from "../src/vet.js";
 import { json, withOdp } from "./odp-stub.js";
 
 const CLAIM =
@@ -269,8 +269,47 @@ test("a host-wide Wayback fallback is capped and reports the matching page, neve
       assert.ok(scan.timeline.every((event) => event.source === "live" || event.url !== "https://fallback.example/"), "no archive event is attributed to the URL asked about");
       assert.ok(scan.notes.some((note) => note.includes(`at most ${WAYBACK_FALLBACK_PAGES}`) && !note.includes("/d,") && !note.includes("/about-this-site")));
       assert.ok(contentFetches <= 16 * WAYBACK_FALLBACK_PAGES);
+      assert.equal(scan.incomplete, false, "a match found among the searched pages is the answer even though more pages exist");
     },
   );
+});
+
+test("a fallback that leaves archived pages unsearched and finds nothing is incomplete", async () => {
+  const hostPages = (host: string, count: number): string[][] => [["original", "mimetype"], ...Array.from({ length: count }, (_, index) => [`https://${host}/p${index}`, "text/html"])];
+  for (const [host, count, incomplete] of [["fallback-many.example", 5, true], ["fallback-few.example", 2, false]] as const) {
+    await withWeb(
+      (request) => (request.host === host ? new Response("nothing", { status: 200 }) : wayback(request, { pages: hostPages(host, count) })),
+      async () => {
+        const scan = await disclosureScan([`https://${host}/`], ["recalibrate now"]);
+        assert.equal(scan.earliestMatch, undefined);
+        assert.equal(scan.incomplete, incomplete, `${count} archived pages`);
+      },
+    );
+  }
+});
+
+test("a Wayback history longer than the searched captures is incomplete only when its oldest captures hold no match", async () => {
+  const history = (host: string): string[][] => [["timestamp", "original", "digest"], ...Array.from({ length: 500 }, (_, index) => [String(20200101000000 + index), `https://${host}/`, `d${index}`])];
+  for (const [host, shows] of [["busy-miss.example", false], ["busy-hit.example", true]] as const) {
+    await withWeb(
+      (request) => (request.host === host ? new Response("nothing", { status: 200 }) : wayback(request, { captures: { [`https://${host}/`]: history(host) }, content: () => (shows ? "Recalibrate now" : "") })),
+      async () => {
+        const scan = await disclosureScan([`https://${host}/`], ["recalibrate now"]);
+        assert.equal(scan.incomplete, !shows);
+        assert.equal(scan.notes.some((note) => /none of the oldest 500 captures/.test(note)), !shows);
+        assert.equal(scan.earliestMatch?.date, shows ? "2020-01-01T00:00:00Z" : undefined, "a match in the oldest captures is already the earliest");
+      },
+    );
+  }
+});
+
+test("charting gaps: unreadable candidates, and unread lower-ranked patents when too few were charted", () => {
+  const charted = (count: number) => Array.from({ length: count }, (_, index) => ({ id: `US${index}`, inForce: "in-force", claims: [], flag: "review" as const }));
+  assert.deepEqual(ftoGaps({ charts: charted(FTO_CHARTED), skipped: [] }, 40, true), [], "enough charted: nothing is hidden");
+  assert.deepEqual(ftoGaps({ charts: charted(2), skipped: [{ id: "US9", reason: "not in force (expired)" }] }, 6, false), [], "every ranked patent was read");
+  assert.match(ftoGaps({ charts: charted(2), skipped: [] }, 6, true).join(" "), /top 6 ranked granted patents.*lower-ranked patents were not read/, "a full search window may hide more");
+  assert.match(ftoGaps({ charts: charted(2), skipped: [] }, 30, false).join(" "), new RegExp(`top ${FTO_MAX_READS} ranked granted patents`));
+  assert.match(ftoGaps({ charts: charted(4), skipped: [{ id: "US9", reason: "claims not readable", unreadable: true }] }, 5, false).join(" "), /1 candidate patent\(s\) could not be charted/);
 });
 
 test("a live page is streamed and read only up to the cap, and says it was cut short", async () => {
