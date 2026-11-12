@@ -21,11 +21,14 @@ export function waybackDate(timestamp: string): string {
   return `${t.slice(0, 4)}-${t.slice(4, 6)}-${t.slice(6, 8)}T${t.slice(8, 10)}:${t.slice(10, 12)}:${t.slice(12, 14)}Z`;
 }
 
+/** Most captures of one URL the scan reads; a URL with more is searched only through its oldest. */
+export const WAYBACK_CAPTURE_LIMIT = 500;
+
 /**
  * Wayback captures of one URL with status 200, one per distinct content
- * digest, oldest first. Perf: P1 · one request, cached 12 h · CRAP <= 10 (CC 2).
+ * digest, oldest first, at most `limit`. Perf: P1 · one request, cached 12 h · CRAP <= 10 (CC 2).
  */
-export async function waybackCaptures(url: string, limit = 500): Promise<Capture[]> {
+export async function waybackCaptures(url: string, limit = WAYBACK_CAPTURE_LIMIT): Promise<Capture[]> {
   const result = await requestJson<string[][]>({
     provider: "wayback",
     route: "/cdx/search/cdx",
@@ -37,14 +40,15 @@ export async function waybackCaptures(url: string, limit = 500): Promise<Capture
 }
 
 /**
- * Distinct HTML pages Wayback holds under a host (status 200), for when a URL
- * itself was only captured as a redirect. Perf: P1 · one request, cached 12 h · CRAP <= 10 (CC 1).
+ * The `limit` shortest URLs of distinct HTML pages Wayback holds under a host
+ * (status 200), for when a URL itself was only captured as a redirect.
+ * Perf: P1 · one request, cached 12 h · CRAP <= 10 (CC 1).
  */
-export async function waybackPages(host: string, limit = 10): Promise<string[]> {
+export async function waybackPages(host: string, limit: number): Promise<string[]> {
   const result = await requestJson<string[][]>({
     provider: "wayback",
     route: "/cdx/search/cdx",
-    query: { url: `${host}/*`, output: "json", fl: "original,mimetype", filter: "statuscode:200", collapse: "urlkey", limit: limit * 10 },
+    query: { url: `${host}/*`, output: "json", fl: "original,mimetype", filter: "statuscode:200", collapse: "urlkey", limit: 100 },
     rateLimit: { name: "wayback:cdx", perMinute: 30 },
     cache: { ttlMs: 12 * 60 * 60_000 },
   });
@@ -114,11 +118,15 @@ export async function archiveTodayCaptures(url: string): Promise<Array<{ date: s
   return parseTimemap(result.text);
 }
 
+/** Most bytes of a live page that are read; the rest is never downloaded. */
+export const LIVE_PAGE_LIMIT = 2 * 1024 * 1024;
+
 /**
- * Fetch a live page (http or https only, no credentials, 2 MB cap).
- * Perf: P1 · one request · CRAP <= 10 (CC 3).
+ * Fetch a live page (http or https only, no credentials), streaming the body
+ * and stopping at LIVE_PAGE_LIMIT bytes. `truncated` says the rest was not read.
+ * Perf: P1 · one request · CRAP <= 10 (CC 6).
  */
-export async function livePage(url: string): Promise<string> {
+export async function livePage(url: string): Promise<{ text: string; truncated: boolean }> {
   const parsed = new URL(url);
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
     throw new IpError("INVALID_INPUT", `only http and https pages can be checked: ${url}`);
@@ -131,6 +139,25 @@ export async function livePage(url: string): Promise<string> {
     throw new IpError("UPSTREAM", `could not fetch ${parsed.host}: ${String(error)}`);
   });
   if (!response.ok) throw new IpError("UPSTREAM", `${parsed.host} answered ${response.status}`, { status: response.status });
-  const text = await response.text();
-  return text.slice(0, 2 * 1024 * 1024);
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  let truncated = false;
+  const reader = response.body?.getReader();
+  try {
+    while (reader) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (size + value.byteLength > LIVE_PAGE_LIMIT) {
+        chunks.push(value.subarray(0, LIVE_PAGE_LIMIT - size));
+        truncated = true;
+        await reader.cancel();
+        break;
+      }
+      chunks.push(value);
+      size += value.byteLength;
+    }
+  } catch (error) {
+    throw new IpError("UPSTREAM", `could not read ${parsed.host}: ${String(error)}`);
+  }
+  return { text: Buffer.concat(chunks).toString("utf8"), truncated };
 }

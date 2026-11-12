@@ -140,7 +140,7 @@ Write each feature as a heading, a bullet, or its own paragraph, then run:
 node dist/src/axi/index.js vet @features.md --sites https://example.com/
 ```
 
-For every feature you get the closest patents, papers, preprints, and open-source projects; a claim-by-claim chart of any in-force patent whose every claim element appears in your feature; the date your own pages first showed it, if they did; and a recommendation to file, publish defensively, or keep it secret, with the reasons. Add `--provisional` for a draft section an attorney can start from, and `--fingerprints` for strings a pre-publication check can watch for. It is a starting point for a patent attorney, not legal advice.
+For every feature you get the closest patents, papers, preprints, and open-source projects; a claim-by-claim chart of any in-force patent whose every claim element appears in your feature; the date your own pages first showed it, if they did; and a recommendation to file, publish defensively, or keep it secret, with the reasons. Pass `--signature "exact text one;exact text two"` (or `--signatures-file @signatures.txt`) with the exact strings that would show a feature, such as interface text or identifiers, so the page check looks for the right thing. Add `--provisional` for a draft section an attorney can start from, and `--fingerprints` for strings a pre-publication check can watch for. When a search source fails or a check cannot run, the output says so and the recommendation says its evidence is partial. It is a starting point for a patent attorney, not legal advice.
 
 #### Shell Interface: `ip-axi`
 

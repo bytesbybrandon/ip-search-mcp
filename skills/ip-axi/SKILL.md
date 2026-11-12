@@ -21,7 +21,7 @@ node <repo>/dist/src/axi/index.js
 
 | Command | Purpose |
 | --- | --- |
-| `vet <description>` | Per feature (headings, bullets, or paragraphs; `--whole` for one): closest art, FTO flags, disclosure status, recommendation. `--sites url,url`, `--detectable yes\|no`, `--provisional`, `--fingerprints` |
+| `vet <description>` | Per feature (headings, bullets, or paragraphs; `--whole` for one): closest art, FTO flags, disclosure status, recommendation. `--sites url,url`, `--signature "a;b"` (repeatable) or `--signatures-file @file`, `--detectable yes\|no`, `--provisional`, `--fingerprints` |
 | `fto chart <number...>` | In-force patents only: independent claims split into elements, each present, absent, or unclear; `--feature @file` |
 | `disclosure scan <url...>` | Dated timeline of when pages first showed `--signature "a;b"` (Wayback, urlscan, archive.today, live) |
 | `prior-art search <description>` | Generated queries over patents, papers, preprints, and code; one ranked list with why each hit overlaps. `--query` for your own boolean queries, `--sources`, `--fields why,url,status,grant`. `date` is the earliest relevant date (a patent's effective filing date, not its grant date); `grant` adds the grant date. See [docs/TOOLS.md](../../docs/TOOLS.md) |

@@ -366,19 +366,27 @@ const ftoChart: CommandModule = {
 
 interface ScanPayload {
   earliestMatch?: { date: string; source: string; url: string; signature?: string };
+  liveMatch?: { date: string; url: string; signature?: string };
   earliestCapture?: { date: string; source: string; url: string };
   timeline: Array<{ date: string; source: string; url: string; kind: string; signature?: string }>;
   notes: string[];
+  incomplete: boolean;
   assessment?: { usDeadline?: string; urgency: string };
 }
 
 function scanLines(payload: ScanPayload, full: boolean): string[] {
+  const match = payload.earliestMatch
+    ? `${payload.earliestMatch.date.slice(0, 10)} ${payload.earliestMatch.source} ${payload.earliestMatch.url} (no later than; it may be earlier)`
+    : payload.liveMatch
+      ? `none in any archive; seen live ${payload.liveMatch.date.slice(0, 10)} ${payload.liveMatch.url} (first public date unknown, no US deadline computed)`
+      : "none found";
   return [
     emitKV([
-      ["earliest_match", payload.earliestMatch ? `${payload.earliestMatch.date.slice(0, 10)} ${payload.earliestMatch.source} ${payload.earliestMatch.url}` : "none found"],
+      ["earliest_match", match],
       ["earliest_capture", payload.earliestCapture ? `${payload.earliestCapture.date.slice(0, 10)} ${payload.earliestCapture.source}` : "none"],
-      ["us_deadline", payload.assessment?.usDeadline ?? ""],
-      ["urgency", payload.assessment?.urgency ?? ""],
+      ["us_deadline", payload.assessment?.usDeadline ? `${payload.assessment.usDeadline} at the latest` : ""],
+      ["urgency", payload.assessment ? `${payload.assessment.urgency}${payload.assessment.urgency === "barred" ? "" : " (at the latest date)"}` : ""],
+      ["scan_complete", payload.incomplete ? "no (see notes)" : "yes"],
     ]),
     emitList("timeline", payload.timeline.map((event) => ({ ...event, date: event.date.slice(0, 10), url: cell(event.url, 80, full) })), ["date", "source", "kind", "signature", "url"]),
   ];
@@ -413,11 +421,31 @@ interface VetPayload {
     closestArt: Array<{ id: string; title: string; date?: string; coverage: number; source: string }>;
     fto: ChartPayload;
     disclosure?: ScanPayload;
+    disclosureSkipped?: string;
     verdict: { recommendation: string; reasons: string[]; cautions: string[] };
     provisional: string;
     fingerprints: Array<{ signature: string; sha256: string }>;
+    notes: string[];
   }>;
+  notes: string[];
   disclaimer: string;
+}
+
+/** Signatures from --signature (repeatable, or separated by ';') and --signatures-file (one per line). */
+async function signaturesFrom(parsed: Parsed): Promise<string[]> {
+  const file = stringFlag(parsed, "signatures-file");
+  const fromFile = file ? (await readFile(file.replace(/^@/, ""), "utf8")).split(/\r?\n/) : [];
+  const all = [...(stringFlag(parsed, "signature") ?? "").split(";"), ...fromFile].map((entry) => entry.trim()).filter(Boolean);
+  const short = all.find((entry) => entry.length < 3);
+  if (short) throw new AxiError(`signature '${short}' is too short`, "a signature must be at least 3 characters; shorter strings match almost any page");
+  return [...new Set(all)];
+}
+
+/** A notes block of the lines not yet printed for an earlier feature, so shared caveats appear once. */
+function noteBlock(name: string, seen: Set<string>, notes: string[]): string[] {
+  const fresh = notes.filter((note) => !seen.has(note));
+  for (const note of fresh) seen.add(note);
+  return fresh.length > 0 ? [emitBlock(name, fresh)] : [];
 }
 
 const vetCommand: CommandModule = {
@@ -428,6 +456,8 @@ const vetCommand: CommandModule = {
     flags: [
       { name: "whole", type: "boolean", description: "vet the description as one feature" },
       { name: "sites", type: "string", description: "comma-separated public URLs to check for disclosure" },
+      { name: "signature", type: "string", repeatable: true, description: "exact string that would show a feature is public; repeat the flag or separate with ';'. Applies to every feature" },
+      { name: "signatures-file", type: "string", description: "@file with one signature per line" },
       { name: "detectable", type: "string", values: ["yes", "no"], description: "whether the features can be seen from outside the product" },
       { name: "provisional", type: "boolean", description: "print the provisional-ready draft section" },
       { name: "fingerprints", type: "boolean", description: "print signature fingerprints as JSON lines" },
@@ -435,31 +465,40 @@ const vetCommand: CommandModule = {
     ],
     examples: [
       "ip-axi vet @features.md",
-      "ip-axi vet @features.md --sites https://example.com/,https://example.com/app.js --provisional",
-      "ip-axi vet @feature.md --whole --detectable no --fingerprints",
+      'ip-axi vet @features.md --sites https://example.com/,https://example.com/app.js --signature "Recalibrate now;driftThreshold" --provisional',
+      "ip-axi vet @feature.md --whole --detectable no --signatures-file @signatures.txt --fingerprints",
     ],
   },
   async run(parsed) {
     const description = (await readMaybeFile(parsed.positionals.join(" "))) ?? "";
     const detectable = stringFlag(parsed, "detectable");
     const sites = stringFlag(parsed, "sites")?.split(",").map((entry) => entry.trim()).filter(Boolean);
+    const signatures = await signaturesFrom(parsed);
     const payload = await callTool<VetPayload>("vet", {
       description,
       whole: booleanFlag(parsed, "whole"),
       sites,
+      signatures: signatures.length > 0 ? signatures : undefined,
       detectable: detectable === undefined ? undefined : detectable === "yes",
     });
     const full = booleanFlag(parsed, "full");
+    const seen = new Set<string>();
     const lines: string[] = [];
     for (const result of payload.features) {
       lines.push(emitKV([["feature", result.feature.name], ["recommendation", result.verdict.recommendation]]));
       lines.push(emitBlock("reasons", [...result.verdict.reasons, ...result.verdict.cautions]));
       lines.push(emitList("closest", result.closestArt.map((hit) => ({ source: hit.source, id: hit.id, date: (hit.date ?? "").slice(0, 10), coverage: hit.coverage, title: cell(hit.title, 70, full) })), ["source", "id", "date", "coverage", "title"]));
       lines.push(emitList("fto", result.fto.charts.map((chart) => ({ id: chart.id, flag: chart.flag, in_force: chart.inForce })), ["id", "flag", "in_force"]));
-      if (result.disclosure) lines.push(...scanLines(result.disclosure, full));
+      if (result.fto.skipped.length > 0) lines.push(emitList("fto_skipped", result.fto.skipped, ["id", "reason"]));
+      if (result.disclosure) {
+        lines.push(...scanLines(result.disclosure, full));
+        lines.push(...noteBlock("disclosure_notes", seen, result.disclosure.notes));
+      } else lines.push(emitKV([["disclosure", `not checked: ${result.disclosureSkipped ?? "unknown reason"}`]]));
+      lines.push(...noteBlock("notes", seen, result.notes));
       if (booleanFlag(parsed, "provisional")) lines.push(emitBlock("provisional", result.provisional.split("\n")));
       if (booleanFlag(parsed, "fingerprints")) lines.push(emitBlock("fingerprints", result.fingerprints.map((entry) => JSON.stringify(entry))));
     }
+    if (payload.notes.length > 0) lines.push(emitBlock("run_notes", payload.notes));
     lines.push(emitBlock("next", ["ip-axi fto chart <number> --feature @feature.md --full", "ip-axi patents read <number> --description @feature.md"]));
     lines.push(emitBlock("help", [payload.disclaimer]));
     print(lines.join("\n"));

@@ -46,7 +46,7 @@ Domain modules never import providers. Providers never format user-facing text. 
 | Wayback | `web.archive.org` | none | Documented CDX and raw-capture endpoints |
 | urlscan | `urlscan.io` | none | Documented search API; public scans only |
 | archive.today | `archive.ph` | none | Memento timemap; often refuses automated clients |
-| live pages | any `http`/`https` URL given by the caller | none | Plain fetch, 2 MB cap, no credentials |
+| live pages | any `http`/`https` URL given by the caller | none | Plain fetch, streamed and cut off at 2 MB (the scan notes when it was), no credentials |
 | index | local file | none | Derived from ODP bulk XML |
 
 Each provider normalizes into `PatentHit`, `TrademarkHit`, `PatentDocument`, or a raw record, and every hit carries `Provenance`: provider, route, retrieval time, source id, and an `undocumented` flag when it applies.
