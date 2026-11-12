@@ -84,6 +84,12 @@ function providerBase(provider: ProviderName): string {
       return config.providers.arxiv.baseUrl;
     case "github":
       return config.providers.github.baseUrl;
+    case "wayback":
+      return config.providers.wayback.baseUrl;
+    case "urlscan":
+      return config.providers.urlscan.baseUrl;
+    case "archivetoday":
+      return config.providers.archivetoday.baseUrl;
     case "index":
       return "file://";
     default:

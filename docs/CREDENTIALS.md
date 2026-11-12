@@ -117,7 +117,7 @@ Both surfaces have no published contract, can change shape without notice, and s
 | `IP_MAX_RETRIES` | `2` | Retry count for 429, 5xx, and network errors |
 | `IP_USER_AGENT` | `ip-search-mcp/0.1.0 (stdio MCP server)` | User-Agent header |
 | `IP_WINDOWS_ENV` | on under Windows and WSL | `0` stops reading keys from the Windows user environment |
-| `PPUBS_BASE_URL`, `TMSEARCH_BASE_URL`, `USPTO_ODP_BASE_URL`, `USPTO_TSDR_BASE_URL`, `EPO_OPS_BASE_URL`, `OPENALEX_BASE_URL`, `ARXIV_BASE_URL`, `GITHUB_API_BASE_URL` | provider defaults | Host overrides for testing only |
+| `PPUBS_BASE_URL`, `TMSEARCH_BASE_URL`, `USPTO_ODP_BASE_URL`, `USPTO_TSDR_BASE_URL`, `EPO_OPS_BASE_URL`, `OPENALEX_BASE_URL`, `ARXIV_BASE_URL`, `GITHUB_API_BASE_URL`, `WAYBACK_BASE_URL`, `URLSCAN_BASE_URL`, `ARCHIVE_TODAY_BASE_URL` | provider defaults | Host overrides for testing only |
 
 Overriding a base URL does not let a key travel to the new host: the host check compares against the configured base, and keys are attached after that check.
 

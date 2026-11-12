@@ -7,6 +7,9 @@ Every tool is registered by `src/server.ts`. Keyed tools return `CREDENTIAL_MISS
 | `credential_status` | yes | no | Provider table and required env vars |
 | `prior_art_search` | yes | no | Description or boolean queries in; one relevance-ranked list of patents, papers, preprints, and repositories out |
 | `patent_read` | yes | no | Independent claims, owner, status, estimated expiry and fee state, per-claim term overlap |
+| `fto_chart` | yes | no | In-force patents only: each independent claim split into elements, each marked present, absent, or unclear in a feature |
+| `disclosure_scan` | yes | no | Dated timeline of when pages first showed given strings (Wayback, urlscan, archive.today, live) and the grace assessment |
+| `vet` | yes | no | Per feature: closest art, freedom-to-operate flags, disclosure status, recommendation, provisional-ready section, fingerprints |
 | `concept_assessment` | yes | no | 101 screen, CPC/Nice guesses, closest hits from generated queries (about 30 to 75 cold ODP requests), distinctiveness band |
 | `patents_search` | yes | no | ODP, OPS, local index, opt-in PPUBS |
 | `patent_get` | yes | no | File wrapper metadata, continuity, bibliographic data |
@@ -25,6 +28,22 @@ Every tool is registered by `src/server.ts`. Keyed tools return `CREDENTIAL_MISS
 | `disclosure_review` | yes | no | 102(b)(1) grace clock plus a cited foreign grace table |
 | `attorney_packet` | yes | optional file | Review packet |
 | `index_build` | yes | yes | Local FTS5 index over bulk XML |
+
+## Vetting a feature
+
+`vet` takes a description and, by default, splits it into features: markdown headings or bullets when present, otherwise blank-line paragraphs. One feature at a time ranks far better than a long multi-feature paragraph. Pass `whole: true` to keep it as one, or pass `features` with names, descriptions, and optional `signatures`. For each feature it:
+
+1. runs `prior_art_search` on the feature (25 results, `hydrate` 30);
+2. charts the top five granted patents with `fto_chart` (in-force patents only; expired, lapsed, abandoned, and pending records are listed as skipped);
+3. when `sites` are given, runs `disclosure_scan` on them with the feature's signatures (given, or derived from its repeated phrases and top terms);
+4. returns one verdict: the closest art, the patents flagged because every element of an independent claim appears in the feature, the earliest dated public match, and a recommendation (`file`, `publish-defensively`, or `keep-secret`) with its reasons and cautions;
+5. adds a provisional-ready draft section (title, classification guesses, closest art as background, summary, elements, and a claim scaffold, with attorney gaps marked) and fingerprints: each signature normalized and SHA-256 hashed, for a pre-publication check that scans outgoing text.
+
+The recommendation rules are simple and stated in each verdict: public for more than a year means publish defensively (a US patent is likely barred); close art covering about three quarters or more of the feature's key terms means publish defensively; public within the year means file before the US deadline; no disclosure, no close art, and `detectable: false` means keep secret; otherwise file.
+
+`fto_chart` splits a claim after its transitional phrase on semicolons, with each "wherein" clause as its own element. An element is present when at least 60% of its content terms appear in the feature, absent at 25% or less, and unclear otherwise.
+
+`disclosure_scan` finds the earliest Wayback capture of each URL whose content contains a signature: it checks the newest capture and a few evenly spaced ones, then binary-searches between the last miss and the first hit, so a page with hundreds of captures costs about a dozen fetches. It also lists the first archive.today capture, the earliest of the host's 100 most recent public urlscan.io scans, and whether the live page shows a signature now. The earliest match feeds `disclosure_review` arithmetic.
 
 ## Prior-art search
 

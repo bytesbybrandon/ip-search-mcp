@@ -13,6 +13,7 @@ The deployed project page is at https://bytesbybrandon.github.io/ip-search-mcp/.
 
 * **Prior-art search:** one description in, several generated queries out, across US patents (titles, CPC classes, and citations, then full text and claims), OpenAlex papers, arXiv preprints, and GitHub repositories, merged into one relevance-ranked list with the overlapping passage for each hit.
 * **Top-hit reading:** independent claims, current owner, status, estimated expiry, and maintenance-fee state for any US patent.
+* **Feature vetting:** one command per description, feature by feature: closest art, element-by-element freedom-to-operate charts of in-force patents, a dated public-disclosure check of web pages (Wayback, urlscan, archive.today, live), a recommendation (file, publish defensively, or keep secret), a provisional-ready draft section, and signature fingerprints.
 * **Official provider search:** ODP file wrapper, TSDR status, and EPO OPS, with provenance on every hit.
 * **Local index:** SQLite FTS5 index built over USPTO bulk XML.
 * **Drawing compliance:** 37 CFR 1.84 SVG generation and validation with citations.
@@ -131,6 +132,16 @@ Every tool, its inputs, and whether it writes a file is documented in [docs/TOOL
 
 ---
 
+#### Vet a new idea
+
+Write each feature as a heading, a bullet, or its own paragraph, then run:
+
+```bash
+node dist/src/axi/index.js vet @features.md --sites https://example.com/
+```
+
+For every feature you get the closest patents, papers, preprints, and open-source projects; a claim-by-claim chart of any in-force patent whose every claim element appears in your feature; the date your own pages first showed it, if they did; and a recommendation to file, publish defensively, or keep it secret, with the reasons. Add `--provisional` for a draft section an attorney can start from, and `--fingerprints` for strings a pre-publication check can watch for. It is a starting point for a patent attorney, not legal advice.
+
 #### Shell Interface: `ip-axi`
 
 An AXI-compliant CLI over the same tools, for shell use and scripted work.
@@ -139,6 +150,7 @@ An AXI-compliant CLI over the same tools, for shell use and scripted work.
 node dist/src/axi/index.js                                  # live provider and index status
 node dist/src/axi/index.js prior-art search "A handheld optical sensor that recalibrates against a sealed reference surface" --fields why
 node dist/src/axi/index.js patents read 9765584
+node dist/src/axi/index.js vet @features.md --sites https://example.com/
 node dist/src/axi/index.js patents search "optical sensor" --limit 5
 node dist/src/axi/index.js patents docs 19131214 --code CTNF
 node dist/src/axi/index.js trademarks get 87454105
@@ -183,8 +195,9 @@ src/
   config.ts       environment parsing and credential state
   http.ts         fetch, retry, rate limit, cache, host check
   research.ts     prior-art search and top-hit reading (composes providers and domain)
-  domain/         assessment, claims, disclosure, drawings, spec, relevance, term
-  providers/      ODP, TSDR, EPO OPS, OpenAlex, arXiv, GitHub, PPUBS, tmsearch, local index
+  vet.ts          feature vetting: element charts, disclosure scan, verdict
+  domain/         assessment, claims, disclosure, drawings, spec, relevance, term, fto, vet
+  providers/      ODP, TSDR, EPO OPS, OpenAlex, arXiv, GitHub, web archives, PPUBS, tmsearch, local index
   axi/            ip-axi shell interface (TOON output, flags, exit codes)
   numbers.ts      patent and trademark identifier normalization
   errors.ts       typed errors

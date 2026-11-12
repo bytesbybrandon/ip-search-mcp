@@ -2,7 +2,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { windowsUserEnv } from "./util/winenv.js";
 
-export type ProviderName = "odp" | "tsdr" | "ops" | "ppubs" | "tmsearch" | "index" | "openalex" | "arxiv" | "github";
+export type ProviderName = "odp" | "tsdr" | "ops" | "ppubs" | "tmsearch" | "index" | "openalex" | "arxiv" | "github" | "wayback" | "urlscan" | "archivetoday";
 
 export interface ProviderEndpoint {
   readonly baseUrl: string;
@@ -74,6 +74,10 @@ export const config = {
       baseUrl: env.GITHUB_API_BASE_URL ?? "https://api.github.com",
       key: readKey("GITHUB_TOKEN"),
     },
+    // Public web archives used by the disclosure scan; no keys.
+    wayback: { baseUrl: env.WAYBACK_BASE_URL ?? "https://web.archive.org" },
+    urlscan: { baseUrl: env.URLSCAN_BASE_URL ?? "https://urlscan.io" },
+    archivetoday: { baseUrl: env.ARCHIVE_TODAY_BASE_URL ?? "https://archive.ph" },
   },
 } as const;
 

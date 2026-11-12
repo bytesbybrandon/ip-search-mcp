@@ -29,6 +29,14 @@ Observed with real USPTO keys, then encoded in the tests and provider code.
 - ODP publishes its rate limits behind the USPTO.gov sign-in. This server paces every ODP call, searches and full-text file reads alike, through one 60-per-minute bucket and backs off on HTTP 429 with `Retry-After`. Over a few hundred file reads in testing, no 429 was returned.
 - OpenAlex without a key shares one small daily budget per network address. arXiv asks for one request every three seconds. GitHub allows 10 searches a minute without a token. When a source fails or runs out, the search returns the other sources and lists the failed runs.
 
+## Vetting, element charts, and disclosure scans
+
+- Element charts compare shared terms, not meaning. A claim element written in different words can be marked absent when the feature has it, and a generic element can be marked present. Claim construction, equivalents, and validity are for counsel.
+- Only the top five granted patents per feature are charted, and only those ODP shows as in force (or with an uncertain fee status). Pending applications are skipped even though they may grant.
+- The disclosure scan assumes a signature stays on a page once it appears. A feature that was shown, removed, and shown again can be dated to its second appearance.
+- Archives hold only what they crawled. A page can have been public before its first capture, and a capture without a match shows only that the page was public. archive.today often refuses automated clients; its failures are listed as notes. urlscan search returns the newest scans, so the earliest listed scan is the earliest of the most recent 100.
+- The recommendation follows fixed rules stated in each verdict. It does not weigh business value, enforcement, or cost.
+
 ## Search quality
 
 - Text search is not classification search. A keyword result set can miss an entire CPC class.
