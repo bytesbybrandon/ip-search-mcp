@@ -1,0 +1,284 @@
+/**
+ * Query generation, boolean matching, and relevance ranking for prior-art
+ * search. Pure functions: no network, no provider imports.
+ */
+
+const STOPWORDS = new Set(
+  (
+    "a an and are as at be been being but by can could do does each either for from had has have having how if in into is it its " +
+    "itself may might more most must no nor not of on once only or other our out over own same shall should so some such than that " +
+    "the their them then there these they this those through to too under until up upon very was we were what when where which while " +
+    "who whom why will with within without would you your also about above after again against all any because before below between " +
+    "both during few further here just like make makes made many much new now off one ones per rather really since still thus two use " +
+    "used uses using via way ways well whether yet " +
+    // Patent and product boilerplate that matches everything.
+    "system systems method methods apparatus device devices wherein comprising comprises comprise include includes including " +
+    "plurality least based configured operable embodiment embodiments invention present provide provides provided providing " +
+    "according associated corresponding respective first second third thereof therein whereby herein example examples feature features " +
+    "product products user users data value values set sets number numbers given another call calls calling level levels keep keeps " +
+    "every sits sit created create creates auto core optionally optional separate separately standalone only means mean meaning whole " +
+    "whose form forms along across axis axes way today shipped ships nothing something anything three four five several each"
+  ).split(/\s+/),
+);
+
+/** Lower-case word tokens with a few characters minimum. Perf: P0 · O(n) · CRAP <= 10 (CC 1). */
+export function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/[\s-]+/)
+    .filter((word) => word.length > 2);
+}
+
+/**
+ * Crude suffix stripper so "invalidation", "invalidates" and "invalidated"
+ * share one stem. Not linguistic; good enough to build wildcard queries.
+ * Perf: P0 · O(1) · CRAP <= 10 (CC 3).
+ */
+export function stem(word: string): string {
+  const rules: Array<[RegExp, string]> = [
+    [/(encies|ency|ences|ence|ents|ent|ancies|ancy|ances|ance|ants|ant)$/, "en"],
+    [/(ational|ation|ations)$/, "at"],
+    [/(ization|izations|izing|ized|izes|ize)$/, "iz"],
+    [/(ies|ied)$/, "y"],
+    [/(ingly|ing|edly|ed|ers|er|ly|(?<!s)s)$/, ""],
+    [/(ability|ible|able)$/, "ab"],
+    [/(ions|ion)$/, ""],
+    [/(ical|ic|al)$/, ""],
+    [/y$/, ""],
+    [/e$/, ""],
+  ];
+  let out = word;
+  for (const [pattern, replacement] of rules) {
+    const stemmed = out.replace(pattern, replacement);
+    if (stemmed !== out && stemmed.length >= 3) out = stemmed;
+  }
+  return out;
+}
+
+export interface KeyTerm {
+  term: string;
+  stem: string;
+  weight: number;
+}
+
+/**
+ * Rank the content words of a description by frequency with an early-mention
+ * bonus, merging words that share a stem.
+ * Perf: P1 · O(n log n) · CRAP <= 15 (CC 5, branch coverage >= 80%).
+ */
+export function keyTerms(description: string, max = 12): KeyTerm[] {
+  const words = tokenize(description).filter((word) => !STOPWORDS.has(word) && !/^\d+$/.test(word));
+  const byStem = new Map<string, { counts: Map<string, number>; weight: number }>();
+  words.forEach((word, index) => {
+    const key = stem(word);
+    const entry = byStem.get(key) ?? { counts: new Map<string, number>(), weight: 0 };
+    entry.counts.set(word, (entry.counts.get(word) ?? 0) + 1);
+    entry.weight += 1 + (index < 40 ? 0.5 : 0);
+    byStem.set(key, entry);
+  });
+  return [...byStem.entries()]
+    .map(([key, entry]) => {
+      const term = [...entry.counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? key;
+      return { term, stem: key, weight: entry.weight };
+    })
+    .sort((a, b) => b.weight - a.weight || a.term.localeCompare(b.term))
+    .slice(0, max);
+}
+
+/** Adjacent content-word pairs that occur at least twice, as candidate phrases. Perf: P1 · O(n) · CRAP <= 10 (CC 3). */
+export function keyPhrases(description: string, max = 4): string[] {
+  const words = tokenize(description);
+  const counts = new Map<string, number>();
+  for (let index = 0; index + 1 < words.length; index += 1) {
+    const [a, b] = [words[index]!, words[index + 1]!];
+    if (STOPWORDS.has(a) || STOPWORDS.has(b)) continue;
+    const phrase = `${a} ${b}`;
+    counts.set(phrase, (counts.get(phrase) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .filter(([, count]) => count >= 2)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, max)
+    .map(([phrase]) => phrase);
+}
+
+/** ODP query form for a term: a prefix wildcard for long stems, both forms for short ones. */
+export function wildcard(term: KeyTerm): string {
+  if (term.stem === term.term) return term.term;
+  return term.stem.length >= 4 ? `${term.stem}*` : `(${term.stem} OR ${term.term})`;
+}
+
+export interface GeneratedQueries {
+  terms: KeyTerm[];
+  phrases: string[];
+  /** Boolean title queries for the USPTO ODP search (AND, quoted phrases, trailing wildcards). */
+  patentQueries: string[];
+  /** Short free-text queries for paper and code search engines. */
+  textQueries: string[];
+}
+
+/**
+ * Generate several queries from one description: the anchor term (most
+ * weighted) ANDed with each of the next terms, a few triples, and repeated
+ * phrases. Several narrow queries beat one long any-term query.
+ * Perf: P1 · O(n log n) · CRAP <= 15 (CC 5).
+ */
+export function generateQueries(description: string, max = 21): GeneratedQueries {
+  const terms = keyTerms(description, 12);
+  const phrases = keyPhrases(description);
+  const patentQueries: string[] = [];
+  // Two anchors, each ANDed with the next terms: one generic anchor (a word
+  // like "key") cannot then crowd out the specific pairings.
+  const anchors = terms.slice(0, 2);
+  const others = terms.slice(2, 12);
+  if (anchors.length === 2) patentQueries.push(`${wildcard(anchors[0]!)} AND ${wildcard(anchors[1]!)}`);
+  for (const other of others) for (const anchor of anchors) patentQueries.push(`${wildcard(anchor)} AND ${wildcard(other)}`);
+  if (anchors.length === 1) patentQueries.push(wildcard(anchors[0]!));
+  for (const phrase of phrases) patentQueries.push(`"${phrase}"`);
+  const textQueries = [
+    ...phrases.slice(0, 2).map((phrase) => `"${phrase}" ${terms.slice(0, 2).map((term) => term.term).filter((t) => !phrase.includes(t)).join(" ")}`.trim()),
+    terms.slice(0, 3).map((term) => term.term).join(" "),
+    [terms[1], terms[2], terms[3]].filter(Boolean).map((term) => term!.term).join(" "),
+    [terms[1], terms[4], terms[5]].filter(Boolean).map((term) => term!.term).join(" "),
+  ].filter((query, index, all) => query && all.indexOf(query) === index);
+  return { terms, phrases, patentQueries: [...new Set(patentQueries)].slice(0, max), textQueries: textQueries.slice(0, 3) };
+}
+
+/** One AND clause: any of its alternatives must match. Phrases are exact word sequences; `*` is a prefix. */
+export type Clause = string[];
+
+/**
+ * Parse `"exact phrase" AND term OR other AND prefix*` into AND clauses of
+ * OR alternatives. Bare adjacent words are ANDed. Parentheses are ignored.
+ * Perf: P0 · O(n) · CRAP <= 10 (CC 7, branch coverage >= 90%).
+ */
+export function parseBoolean(query: string): Clause[] {
+  const tokens = query.match(/"[^"]+"|\S+/g) ?? [];
+  const clauses: Clause[] = [];
+  let current: Clause = [];
+  let pendingOr = false;
+  for (const raw of tokens) {
+    const token = raw.replace(/[()]/g, "");
+    if (!token) continue;
+    if (token === "AND") continue;
+    if (token === "OR") {
+      pendingOr = true;
+      continue;
+    }
+    const alternative = token.replace(/"/g, "").toLowerCase().trim();
+    if (!alternative) continue;
+    if (pendingOr || current.length === 0) current.push(alternative);
+    else {
+      clauses.push(current);
+      current = [alternative];
+    }
+    pendingOr = false;
+  }
+  if (current.length > 0) clauses.push(current);
+  return clauses;
+}
+
+function alternativeMatches(alternative: string, text: string, words: Set<string>): boolean {
+  if (alternative.includes(" ")) return text.includes(alternative);
+  if (alternative.endsWith("*")) {
+    const prefix = alternative.slice(0, -1);
+    for (const word of words) if (word.startsWith(prefix)) return true;
+    return false;
+  }
+  return words.has(alternative);
+}
+
+/** True when every AND clause has a matching alternative in the text. Perf: P0 · O(clauses x words) · CRAP <= 10 (CC 2). */
+export function matchesAll(clauses: Clause[], text: string): boolean {
+  const normalized = ` ${tokenize(text).join(" ")} `;
+  const words = new Set(normalized.trim().split(" "));
+  return clauses.every((clause) => clause.some((alternative) => alternativeMatches(alternative, normalized, words)));
+}
+
+export interface RankDocument {
+  id: string;
+  /** Weighted fields; claims weigh most because they define what is protected. */
+  fields: { title?: string; abstract?: string; claims?: string; body?: string };
+}
+
+const FIELD_WEIGHT = { title: 2.5, abstract: 2, claims: 3, body: 1 } as const;
+
+export interface RankResult {
+  id: string;
+  score: number;
+  matched: string[];
+  missing: string[];
+}
+
+/**
+ * BM25 over the candidate pool with per-field weights. IDF is computed on
+ * the pool itself, which is what matters for ordering it.
+ * Perf: P1 · O(docs x tokens) · CRAP <= 15 (CC 6, branch coverage >= 80%).
+ */
+export function rankDocuments(documents: RankDocument[], terms: KeyTerm[], k1 = 1.2, b = 0.75): RankResult[] {
+  if (documents.length === 0 || terms.length === 0) return documents.map((doc) => ({ id: doc.id, score: 0, matched: [], missing: terms.map((t) => t.term) }));
+  const prepared = documents.map((doc) => {
+    const stems = new Map<string, number>();
+    let length = 0;
+    for (const [field, weight] of Object.entries(FIELD_WEIGHT) as Array<[keyof typeof FIELD_WEIGHT, number]>) {
+      const text = doc.fields[field];
+      if (!text) continue;
+      for (const word of tokenize(text)) {
+        const key = stem(word);
+        stems.set(key, (stems.get(key) ?? 0) + weight);
+        length += 1;
+      }
+    }
+    return { doc, stems, length };
+  });
+  const average = prepared.reduce((sum, entry) => sum + entry.length, 0) / prepared.length || 1;
+  const df = new Map<string, number>();
+  for (const term of terms) df.set(term.stem, prepared.filter((entry) => entry.stems.has(term.stem)).length);
+  const n = prepared.length;
+  return prepared
+    .map(({ doc, stems, length }) => {
+      let score = 0;
+      const matched: string[] = [];
+      const missing: string[] = [];
+      for (const term of terms) {
+        const tf = stems.get(term.stem) ?? 0;
+        if (tf === 0) {
+          missing.push(term.term);
+          continue;
+        }
+        matched.push(term.term);
+        const docs = df.get(term.stem) ?? 0;
+        const idf = Math.log(1 + (n - docs + 0.5) / (docs + 0.5));
+        score += term.weight * idf * ((tf * (k1 + 1)) / (tf + k1 * (1 - b + (b * length) / average)));
+      }
+      return { id: doc.id, score: Math.round(score * 1000) / 1000, matched, missing };
+    })
+    .sort((a, b2) => b2.score - a.score || a.id.localeCompare(b2.id));
+}
+
+/**
+ * Reciprocal rank fusion: merge ranked id lists from several queries or
+ * sources without comparing their raw scores. Perf: P1 · O(total ids) · CRAP <= 10 (CC 2).
+ */
+export function fuseRanks(lists: string[][], k = 60): Map<string, number> {
+  const scores = new Map<string, number>();
+  for (const list of lists) list.forEach((id, index) => scores.set(id, (scores.get(id) ?? 0) + 1 / (k + index + 1)));
+  return scores;
+}
+
+/**
+ * The sentence-sized passage of a text that shares the most key terms, for
+ * a "why it overlaps" line. Perf: P1 · O(sentences x terms) · CRAP <= 10 (CC 3).
+ */
+export function bestPassage(text: string, terms: KeyTerm[], maxLength = 320): { passage: string; shared: string[] } {
+  const sentences = text.split(/(?<=[.;:])\s+/).filter((sentence) => sentence.trim().length > 0);
+  let best = { passage: "", shared: [] as string[] };
+  for (const sentence of sentences) {
+    const stems = new Set(tokenize(sentence).map(stem));
+    const shared = terms.filter((term) => stems.has(term.stem)).map((term) => term.term);
+    if (shared.length > best.shared.length) best = { passage: sentence.trim(), shared };
+  }
+  if (best.passage.length > maxLength) best.passage = `${best.passage.slice(0, maxLength - 3)}...`;
+  return best;
+}

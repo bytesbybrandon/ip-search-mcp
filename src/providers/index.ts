@@ -1,7 +1,8 @@
 import { mkdirSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join, extname } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { createRequire } from "node:module";
+import type { DatabaseSync } from "node:sqlite";
 import { XMLParser } from "fast-xml-parser";
 import { config } from "../config.js";
 import { IpError } from "../errors.js";
@@ -24,7 +25,9 @@ export interface IndexStatus {
 
 export function openIndex(path = config.indexDbPath, readonly = false): DatabaseSync {
   if (!readonly) mkdirSync(dirname(path), { recursive: true });
-  const db = new DatabaseSync(path, { readOnly: readonly });
+  // Loaded on first use so the SQLite ExperimentalWarning filter (util/quiet) is installed first.
+  const { DatabaseSync: Database } = createRequire(import.meta.url)("node:sqlite") as typeof import("node:sqlite");
+  const db = new Database(path, { readOnly: readonly });
   db.exec(`
     CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
     CREATE TABLE IF NOT EXISTS patents(

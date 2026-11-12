@@ -300,12 +300,14 @@
           <div class="ruler__ends measured"><span data-clock-start></span><span data-clock-end></span></div>
         </div>
         <div class="abroad">
-          <p class="abroad__head">No grace period abroad. Disclosure already counts against you in:</p>
-          <ul class="chips measured" aria-label="Absolute-novelty jurisdictions"><li>EP</li><li>CN</li><li>JP</li><li>KR</li><li>DE</li><li>FR</li><li>GB</li><li>IN</li><li>BR</li><li>AU</li><li>CA</li></ul>
+          <p class="abroad__head">No general grace period. Disclosure already counts against you in:</p>
+          <ul class="chips measured" aria-label="Jurisdictions without a general grace period"><li>EP</li><li>GB</li><li>DE</li><li>FR</li><li>CN</li><li>IN</li></ul>
+          <p class="abroad__head">A limited 12-month grace, with conditions:</p>
+          <ul class="chips measured" aria-label="Jurisdictions with a limited 12-month grace period"><li>JP</li><li>KR</li><li>CA</li><li>AU</li><li>BR</li></ul>
         </div>
         <div class="actions">
           <button class="btn btn--primary" type="button" data-copy-fn="clock">Copy as an agent prompt</button>
-          <a class="btn" href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/TOOLS.md">All 19 tools</a>
+          <a class="btn" href="https://github.com/bytesbybrandon/ip-search-mcp/blob/main/docs/TOOLS.md">All 21 tools</a>
         </div>
       </div>
     </div>
@@ -338,11 +340,11 @@
           <p class="stats__unit">trademark records indexed in 60 seconds.</p>
         </div>
         <div class="stats__tools">
-          <p class="label">The 19 tools</p>
+          <p class="label">The 21 tools</p>
           <dl class="tools">
             <div><dt>Patents</dt><dd class="measured"><code>patents_search</code><code>patent_get</code><code>patent_documents</code><code>patent_family</code></dd></div>
             <div><dt>Trademarks</dt><dd class="measured"><code>trademarks_search</code><code>trademark_get</code><code>trademark_documents</code></dd></div>
-            <div><dt>Research</dt><dd class="measured"><code>concept_assessment</code><code>prior_art_report</code></dd></div>
+            <div><dt>Research</dt><dd class="measured"><code>prior_art_search</code><code>patent_read</code><code>concept_assessment</code><code>prior_art_report</code></dd></div>
             <div><dt>Drawings</dt><dd class="measured"><code>drawing_spec</code><code>drawing_validate</code><code>drawing_rules</code></dd></div>
             <div><dt>Drafting</dt><dd class="measured"><code>application_draft</code><code>claims_draft</code></dd></div>
             <div><dt>Review</dt><dd class="measured"><code>application_lint</code><code>disclosure_review</code><code>attorney_packet</code></dd></div>
@@ -722,7 +724,7 @@ claude mcp list</code></pre>
       place(frac);
       startEl.textContent = "disclosed " + iso(disclosure);
       endEl.textContent = "deadline " + iso(deadline);
-      window.__clockPrompt = "Run disclosure_review for a public disclosure on " + iso(disclosure) + (planned ? " and a planned filing on " + iso(planned) : "") + ". Report the US deadline and every absolute-novelty jurisdiction. File nothing.";
+      window.__clockPrompt = "Run disclosure_review for a public disclosure on " + iso(disclosure) + (planned ? " and a planned filing on " + iso(planned) : "") + ". Report the US deadline and each foreign grace period with its citation. File nothing.";
     };
     const seed = new Date(Date.now() - 118 * DAY);
     dateEl.value = iso(seed);

@@ -32,6 +32,8 @@ export interface RequestOptions {
   method?: "GET" | "POST";
   headers?: Record<string, string>;
   body?: unknown;
+  /** Sent as application/x-www-form-urlencoded instead of a JSON body. */
+  form?: Record<string, string>;
   query?: Record<string, string | number | undefined>;
   accept?: "json" | "text";
   cache?: { ttlMs: number };
@@ -76,6 +78,12 @@ function providerBase(provider: ProviderName): string {
       return config.providers.ppubs.baseUrl;
     case "tmsearch":
       return config.providers.tmsearch.baseUrl;
+    case "openalex":
+      return config.providers.openalex.baseUrl;
+    case "arxiv":
+      return config.providers.arxiv.baseUrl;
+    case "github":
+      return config.providers.github.baseUrl;
     case "index":
       return "file://";
     default:
@@ -137,7 +145,11 @@ async function perform(
       const response = await fetch(url, {
         method: options.method ?? "GET",
         headers,
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        body: options.form
+          ? new URLSearchParams(options.form).toString()
+          : options.body === undefined
+            ? undefined
+            : JSON.stringify(options.body),
         signal: AbortSignal.timeout(options.timeoutMs ?? config.timeoutMs),
         redirect: "follow",
       });
@@ -217,9 +229,12 @@ export async function requestJson<T>(options: RequestOptions): Promise<HttpJsonR
   if ((options.accept ?? "json") === "json") {
     headers.accept = headers.accept ?? "application/json";
   }
-  if (options.body !== undefined) headers["content-type"] = headers["content-type"] ?? "application/json";
+  if (options.form) headers["content-type"] = "application/x-www-form-urlencoded";
+  else if (options.body !== undefined) headers["content-type"] = headers["content-type"] ?? "application/json";
 
-  const key = options.cache ? cacheKey({ provider: options.provider, url: url.href, body: options.body ?? null }) : undefined;
+  const key = options.cache
+    ? cacheKey({ provider: options.provider, url: url.href, body: options.form ?? options.body ?? null })
+    : undefined;
   const provenanceBase = {
     provider: options.provider,
     route: `${options.method ?? "GET"} ${url.pathname}${url.search}`,
@@ -268,18 +283,22 @@ export async function requestText(options: RequestOptions): Promise<HttpTextResu
   const url = buildUrl(options.provider, options.route, options.query);
   const headers = headerMap(options.headers);
   headers.accept = headers.accept ?? "application/xml, text/html, text/plain, */*";
+  const provenance: Provenance = {
+    provider: options.provider,
+    route: `${options.method ?? "GET"} ${url.pathname}${url.search}`,
+    retrievedAt: new Date().toISOString(),
+    sourceId: options.sourceId,
+    undocumented: options.undocumented,
+  };
+
+  const key = options.cache ? cacheKey({ provider: options.provider, url: url.href, body: options.body ?? null }) : undefined;
+  if (key) {
+    const cached = await readCache(key);
+    if (cached) return { text: cached.body, contentType: cached.contentType, provenance: { ...provenance, cached: true } };
+  }
 
   const response = await perform(url, options, headers);
   const { body, contentType } = await interpret(response, options, url);
-  return {
-    text: body,
-    contentType,
-    provenance: {
-      provider: options.provider,
-      route: `${options.method ?? "GET"} ${url.pathname}${url.search}`,
-      retrievedAt: new Date().toISOString(),
-      sourceId: options.sourceId,
-      undocumented: options.undocumented,
-    },
-  };
+  if (key) await writeCache(key, body, contentType, options.cache!.ttlMs);
+  return { text: body, contentType, provenance };
 }

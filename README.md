@@ -11,10 +11,12 @@ The deployed project page is at https://bytesbybrandon.github.io/ip-search-mcp/.
 
 ### Key Features
 
+* **Prior-art search:** one description in, several generated queries out, across US patents (titles, CPC classes, and citations, then full text and claims), OpenAlex papers, arXiv preprints, and GitHub repositories, merged into one relevance-ranked list with the overlapping passage for each hit.
+* **Top-hit reading:** independent claims, current owner, status, estimated expiry, and maintenance-fee state for any US patent.
 * **Official provider search:** ODP file wrapper, TSDR status, and EPO OPS, with provenance on every hit.
 * **Local index:** SQLite FTS5 index built over USPTO bulk XML.
 * **Drawing compliance:** 37 CFR 1.84 SVG generation and validation with citations.
-* **Drafting aids:** claim parsing and linting, specification assembly, disclosure-clock arithmetic, and concept assessment.
+* **Drafting aids:** claim parsing and linting, specification assembly, disclosure-clock arithmetic with a cited foreign grace table, and concept assessment.
 * **Attorney packet:** review packet assembly that reports gaps instead of inventing content.
 * **Opt-in surfaces:** Patent Public Search and the Trademark Search backend behind `IP_ALLOW_UNOFFICIAL=1`, labeled `undocumented: true`.
 
@@ -64,9 +66,9 @@ The full tool list is in [docs/TOOLS.md](docs/TOOLS.md).
 
 #### Environment Setup
 
-No keys are required to start. Without them, keyed tools return a `CREDENTIAL_MISSING` error with setup instructions, and unkeyed sources remain available.
+No keys are required to start. Without them, keyed tools return a `CREDENTIAL_MISSING` error with setup instructions, and unkeyed sources remain available. Patent prior-art search needs the free ODP key; papers, preprints, and code search work without keys.
 
-Keys come from the process environment. A local `.env` file is not loaded automatically; pass it explicitly with `node --env-file=.env dist/src/index.js`. `.env.example` lists every variable and holds no values.
+Keys come from the process environment. On Windows and under WSL, a key missing from the process environment is also read once from the Windows user environment, so keys set there need no client restart; set `IP_WINDOWS_ENV=0` to turn that off. A local `.env` file is not loaded automatically; pass it explicitly with `node --env-file=.env dist/src/index.js`. `.env.example` lists every variable and holds no values.
 
 See [docs/CREDENTIALS.md](docs/CREDENTIALS.md) for how to obtain each provider key and how keys are isolated.
 
@@ -135,6 +137,8 @@ An AXI-compliant CLI over the same tools, for shell use and scripted work.
 
 ```bash
 node dist/src/axi/index.js                                  # live provider and index status
+node dist/src/axi/index.js prior-art search "A handheld optical sensor that recalibrates against a sealed reference surface" --fields why
+node dist/src/axi/index.js patents read 9765584
 node dist/src/axi/index.js patents search "optical sensor" --limit 5
 node dist/src/axi/index.js patents docs 19131214 --code CTNF
 node dist/src/axi/index.js trademarks get 87454105
@@ -178,8 +182,9 @@ src/
   cli.ts          status, rules, and index commands
   config.ts       environment parsing and credential state
   http.ts         fetch, retry, rate limit, cache, host check
-  domain/         assessment, claims, disclosure, drawings, spec
-  providers/      ODP, TSDR, EPO OPS, PPUBS, tmsearch, local index
+  research.ts     prior-art search and top-hit reading (composes providers and domain)
+  domain/         assessment, claims, disclosure, drawings, spec, relevance, term
+  providers/      ODP, TSDR, EPO OPS, OpenAlex, arXiv, GitHub, PPUBS, tmsearch, local index
   axi/            ip-axi shell interface (TOON output, flags, exit codes)
   numbers.ts      patent and trademark identifier normalization
   errors.ts       typed errors

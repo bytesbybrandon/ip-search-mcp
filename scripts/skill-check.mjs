@@ -8,7 +8,7 @@ if (help.status !== 0) {
   console.error("ip-axi --help failed");
   process.exit(1);
 }
-const commands = [...help.stdout.matchAll(/^  ([a-z][a-z ]*),/gm)].map((match) => match[1].trim());
+const commands = [...help.stdout.matchAll(/^  ([a-z][a-z -]*),/gm)].map((match) => match[1].trim());
 const skill = readFileSync(new URL("../skills/ip-axi/SKILL.md", import.meta.url), "utf8");
 const missing = commands.filter((command) => !skill.includes(command));
 if (missing.length > 0) {

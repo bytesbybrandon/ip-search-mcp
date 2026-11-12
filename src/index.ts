@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "./util/quiet.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { runCli } from "./cli.js";
 import { createServer } from "./server.js";

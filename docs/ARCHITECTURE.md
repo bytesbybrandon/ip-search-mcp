@@ -8,15 +8,19 @@ MCP client
    v
 src/server.ts  (tool registration, zod input schemas, output formatting)
    |
+   +-- research.ts        prior-art search and top-hit reading (composes providers and domain)
+   |
    +-- domain/            pure logic, no network
    |     assessment      concept screen (101 risks, CPC/Nice, closest hits)
    |     claims          claim parsing, dependency graph, 112 lint
-   |     disclosure      102(b)(1) clock arithmetic
+   |     disclosure      102(b)(1) clock arithmetic and the cited foreign grace table
+   |     relevance       query generation, boolean matching, BM25 ranking, overlap passages
+   |     term            expiry and in-force estimate from file-wrapper data
    |     drawings/       rules (1.84), geometry (SVG parse), render, validate
    |     spec            specification assembly, claim scaffold, packet
    |
    +-- providers/         one module per data source
-   |     odp   tsdr   ops   ppubs (opt-in)   tmsearch (opt-in)   index (sqlite)
+   |     odp   tsdr   ops   openalex   arxiv   github   ppubs (opt-in)   tmsearch (opt-in)   index (sqlite)
    |
    +-- http.ts            fetch, retry, rate limit, cache, credential host check
    +-- numbers.ts         patent and trademark identifier normalization
@@ -36,6 +40,9 @@ Domain modules never import providers. Providers never format user-facing text. 
 | EPO OPS | `ops.epo.org` | OAuth2 client credentials | Documented, fair-use quota |
 | PPUBS | `ppubs.uspto.gov` | session token | Undocumented, opt-in |
 | tmsearch | `tmsearch.uspto.gov` | WAF cookie (optional) | Undocumented, opt-in, backend base discovered at runtime |
+| OpenAlex | `api.openalex.org` | optional `api_key` | Documented, free tier with a daily budget |
+| arXiv | `export.arxiv.org` | none | Documented, one request per three seconds |
+| GitHub | `api.github.com` | optional bearer token | Documented REST search |
 | index | local file | none | Derived from ODP bulk XML |
 
 Each provider normalizes into `PatentHit`, `TrademarkHit`, `PatentDocument`, or a raw record, and every hit carries `Provenance`: provider, route, retrieval time, source id, and an `undocumented` flag when it applies.
@@ -54,12 +61,25 @@ Each provider normalizes into `PatentHit`, `TrademarkHit`, `PatentDocument`, or 
 | `ops:default` | 60/min | EPO fair-use charter |
 | `ppubs:default` | 30/min | Undocumented; deliberately conservative |
 | `tmsearch:default` | 30/min | Undocumented; deliberately conservative |
+| `openalex:default` | 60/min | Conservative; the daily budget is the real limit |
+| `arxiv:default` | 20/min | arXiv API terms: one request per three seconds |
+| `github:search` | 10/min, 30/min with a token | GitHub search API limits |
 
 The limiter is a sliding window shared per bucket across the process. Retries honor `Retry-After` and use exponential backoff for 429 and 5xx.
 
 ## Caching
 
-File cache under `~/.cache/ip-search-mcp`, keyed by a SHA-256 of provider, URL, and body, with a per-call TTL (5 minutes for searches, 1 minute for case status, 30 minutes to 1 hour for metadata and bibliographic data). Writes are atomic (temp file then rename). Cache hits are marked `cached: true` in provenance.
+File cache under `~/.cache/ip-search-mcp`, keyed by a SHA-256 of provider, URL, and body, with a per-call TTL (5 minutes for `patents_search`, 12 hours for prior-art title, CPC, and citation queries, 24 hours for paper, preprint, and code searches, 30 days for issued full text, 1 minute for case status, 30 minutes to 1 hour for metadata and bibliographic data). Writes are atomic (temp file then rename). Cache hits are marked `cached: true` in provenance.
+
+## Prior-art pipeline
+
+1. `relevance.generateQueries` turns a description into weighted key terms (stemmed, boilerplate removed) and several narrow queries: the two top terms each ANDed with the next ten, plus repeated phrases.
+2. `research.patentLeg` runs the title queries against ODP, adds the most common CPC symbols of the best title hits as class queries, and reads the full-text XML that ODP links from each file wrapper for a diversified set of candidates (the best titles from every query, then the best overall). It then follows references cited by the top five and examiner citations of the top three, and reads those too.
+3. `research.artLeg` runs the text queries against OpenAlex, arXiv, and GitHub.
+4. Patents, literature, and code are each ranked by BM25 on their own pool (claims weighted highest), normalized to the best hit in their group, and merged with term coverage. Explicit boolean queries are checked against each document's own text.
+5. Every provider failure becomes a run entry with its error; the other sources still return.
+
+`patent_read` resolves a number to its file wrapper, reads the issued (or published) full text, looks up the earliest non-provisional parent, and passes status, events, and term adjustment to `term.estimateTerm`.
 
 ## Drawing pipeline
 

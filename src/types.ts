@@ -17,6 +17,7 @@ export interface PatentHit {
   assignees?: string[];
   cpc?: string[];
   status?: string;
+  patentNumber?: string;
   applicationNumber?: string;
   url?: string;
   provenance: Provenance;
@@ -61,4 +62,19 @@ export interface Evidence {
   source: string;
   retrievedAt: string;
   note?: string;
+}
+
+/** A non-patent prior-art candidate: a paper, preprint, or public code repository. */
+export interface ArtHit {
+  kind: "paper" | "preprint" | "code";
+  id: string;
+  title: string;
+  summary?: string;
+  /** Earliest public date the source reports (publication, submission, or repository creation). */
+  date?: string;
+  authors?: string[];
+  venue?: string;
+  url?: string;
+  stars?: number;
+  provenance: Provenance;
 }

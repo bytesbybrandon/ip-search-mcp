@@ -16,6 +16,9 @@ Environment:
   USPTO_TSDR_API_KEY      TSDR key (tsdrapi.uspto.gov only)
   EPO_OPS_CLIENT_ID       EPO OPS OAuth2 client id
   EPO_OPS_CLIENT_SECRET   EPO OPS OAuth2 client secret
+  OPENALEX_API_KEY        Optional OpenAlex key (own daily budget)
+  GITHUB_TOKEN            Optional GitHub token (higher repository-search limit)
+  IP_WINDOWS_ENV=0        Do not read missing keys from the Windows user environment
   IP_ALLOW_UNOFFICIAL=1   Enable undocumented Patent Public Search and Trademark Search adapters
   TMSEARCH_WAF_TOKEN      Optional aws-waf-token cookie for Trademark Search
   IP_INDEX_DB             Local index path (default ${config.indexDbPath})

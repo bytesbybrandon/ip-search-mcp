@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE us-patent-grant SYSTEM "us-patent-grant-v45-2014-04-03.dtd" [ ]>
+<us-patent-grant lang="EN" dtd-version="v4.5 2014-04-03" country="US">
+<us-bibliographic-data-grant>
+<publication-reference>
+<document-id>
+<country>US</country>
+<doc-number>9765584</doc-number>
+<kind>B2</kind>
+<date>20171024</date>
+</document-id>
+</publication-reference>
+<invention-title id="d2e43">Self-calibrating optical sensor housing</invention-title>
+<us-references-cited>
+<us-citation>
+<patcit num="00001">
+<document-id>
+<country>US</country>
+<doc-number>7000001</doc-number>
+<kind>B1</kind>
+</document-id>
+</patcit>
+<category>cited by examiner</category>
+</us-citation>
+<us-citation>
+<patcit num="00002">
+<document-id>
+<country>DE</country>
+<doc-number>102004000001</doc-number>
+<kind>A1</kind>
+</document-id>
+</patcit>
+</us-citation>
+<us-citation>
+<nplcit num="00003">
+<othercit>A. Author, &#x201c;Drift in optical sensors,&#x201d; Journal of Examples, 2001.</othercit>
+</nplcit>
+</us-citation>
+</us-references-cited>
+</us-bibliographic-data-grant>
+<abstract id="abstract">
+<p id="p-0001" num="0000">A housing holds an optical sensor and a sealed reference surface. When measured drift exceeds a threshold, the sensor recalibrates against the reference surface.</p>
+</abstract>
+<description id="description">
+<p id="p-0002" num="0001">The housing <b>10</b> includes an optical sensor <b>12</b> and a reference surface <b>14</b> sealed in a chamber.</p>
+<p id="p-0003" num="0002">A controller compares the reading of the reference surface with a stored value &amp; records the drift.</p>
+</description>
+<us-claim-statement>What is claimed is:</us-claim-statement>
+<claims id="claims">
+<claim id="CLM-00001" num="00001">
+<claim-text>1. A sensor assembly comprising:
+<claim-text>a housing;</claim-text>
+<claim-text>an optical sensor disposed in the housing; and</claim-text>
+<claim-text>a reference surface sealed in a chamber of the housing, wherein the optical sensor recalibrates against the reference surface when drift exceeds a threshold.</claim-text>
+</claim-text>
+</claim>
+<claim id="CLM-00002" num="00002">
+<claim-text>2. The sensor assembly of <claim-ref idref="CLM-00001">claim 1</claim-ref>, wherein the threshold is stored in a controller.</claim-text>
+</claim>
+<claim id="CLM-00003" num="00003">
+<claim-text>3. A method of calibrating an optical sensor, comprising: measuring a reference surface; computing drift; and recalibrating when the drift exceeds a threshold.</claim-text>
+</claim>
+</claims>
+</us-patent-grant>

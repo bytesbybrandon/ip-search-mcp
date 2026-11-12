@@ -159,6 +159,164 @@ const patentsSearch: CommandModule = {
   },
 };
 
+interface Candidate {
+  rank: number;
+  source: string;
+  id: string;
+  title: string;
+  date?: string;
+  owner?: string;
+  url?: string;
+  status?: string;
+  score: number;
+  coverage: number;
+  textRead: string;
+  matched: string[];
+  foundBy: string[];
+  why?: string;
+}
+
+interface PriorArtPayload {
+  terms: Array<{ term: string }>;
+  queries: { patent: string[]; text: string[] };
+  results: Candidate[];
+  runs: Array<{ source: string; query: string; count: number; error?: string }>;
+  notes: string[];
+}
+
+const priorArtSearch: CommandModule = {
+  spec: {
+    name: "prior-art search",
+    summary: "Ranked prior art for a description: patents, papers, preprints, code",
+    args: [{ name: "description", required: true, description: "plain-language description, or @file" }],
+    flags: [
+      { name: "query", type: "string", description: "explicit boolean queries separated by ';' (replaces generated ones)" },
+      { name: "sources", type: "string", default: "patents,papers,preprints,code", description: "comma-separated subset" },
+      { name: "limit", type: "string", default: "25", description: "rows to return" },
+      { name: "fields", type: "string", description: "extra columns: url,status,owner,coverage,read,found,why,score" },
+      { name: "full", type: "boolean", description: "do not truncate cell text" },
+    ],
+    examples: [
+      'ip-axi prior-art search "A handheld optical sensor that recalibrates against a sealed reference surface when drift exceeds a threshold"',
+      "ip-axi prior-art search @idea.md --sources patents --fields why,status",
+      'ip-axi prior-art search "drift correction" --query \'"reference surface" AND calibrat*\'',
+    ],
+  },
+  async run(parsed) {
+    const description = (await readMaybeFile(parsed.positionals.join(" "))) ?? "";
+    const explicit = stringFlag(parsed, "query")?.split(";").map((entry) => entry.trim()).filter(Boolean);
+    const sources = (stringFlag(parsed, "sources") ?? "").split(",").map((entry) => entry.trim()).filter(Boolean);
+    const payload = await callTool<PriorArtPayload>("prior_art_search", {
+      description: description.length >= 20 ? description : undefined,
+      queries: explicit && explicit.length > 0 ? explicit : description.length < 20 ? [description] : undefined,
+      sources,
+      limit: numberFlag(parsed, "limit", 25),
+    });
+    const full = booleanFlag(parsed, "full");
+    const fields = requestedFields(stringFlag(parsed, "fields"), ["rank", "source", "id", "date", "title"], new Set([
+      "rank", "source", "id", "date", "title", "url", "status", "owner", "coverage", "read", "found", "why", "score",
+    ]));
+    const rows = payload.results.map((hit) => ({
+      rank: hit.rank,
+      source: hit.source,
+      id: hit.id,
+      date: (hit.date ?? "").slice(0, 10),
+      title: cell(hit.title, 80, full),
+      url: hit.url ?? "",
+      status: cell(hit.status, 40, full),
+      owner: cell(hit.owner, 40, full),
+      coverage: hit.coverage,
+      read: hit.textRead,
+      found: cell(hit.foundBy.join("; "), 60, full),
+      why: cell(hit.why, 160, full),
+      score: hit.score,
+    }));
+    const lines = [
+      emitKV([["terms", payload.terms.map((term) => term.term).join(", ")]]),
+      emitList("results", rows, fields),
+    ];
+    const failed = payload.runs.filter((run) => run.error);
+    if (failed.length > 0) lines.push(emitBlock("failed", failed.map((run) => `${run.source} "${run.query}": ${run.error}`)));
+    const firstPatent = payload.results.find((hit) => hit.source === "patent" && !hit.id.startsWith("US-APP-"));
+    lines.push(
+      emitBlock("next", [
+        firstPatent ? `ip-axi patents read ${firstPatent.id.replace(/^US/, "")} --description @<same description>` : "ip-axi status",
+        "ip-axi prior-art search <description> --fields why,url --full",
+      ]),
+    );
+    lines.push(emitBlock("help", payload.notes));
+    print(lines.join("\n"));
+    return 0;
+  },
+};
+
+interface Reading {
+  id: string;
+  applicationNumber?: string;
+  title?: string;
+  owner?: string;
+  status?: string;
+  grantDate?: string;
+  term: { inForce: string; estimatedExpiry?: string; basis: string[]; maintenance: Array<{ year: number; state: string }> };
+  claimCount: number;
+  independentClaims: Array<{ number: number; text: string; shared: string[]; notInClaim: string[] }>;
+  why?: string;
+  url?: string;
+}
+
+const patentsRead: CommandModule = {
+  spec: {
+    name: "patents read",
+    summary: "Independent claims, status, estimated expiry, owner, and overlap for patents",
+    args: [{ name: "number", required: true, description: "one or more US patent or application numbers" }],
+    flags: [
+      { name: "description", type: "string", description: "feature to compare each independent claim against, or @file" },
+      { name: "full", type: "boolean", description: "print whole claims" },
+    ],
+    examples: ["ip-axi patents read 9765584", "ip-axi patents read 9765584 15/234,567 --description @idea.md"],
+  },
+  async run(parsed) {
+    const description = await readMaybeFile(stringFlag(parsed, "description"));
+    const payload = await callTool<{ readings: Array<{ number: string; ok: boolean; reading?: Reading; error?: { message?: string; hint?: string } }> }>(
+      "patent_read",
+      { numbers: parsed.positionals, description },
+    );
+    const full = booleanFlag(parsed, "full");
+    const lines: string[] = [];
+    for (const entry of payload.readings) {
+      if (!entry.ok || !entry.reading) {
+        lines.push(emitKV([["number", entry.number], ["error", entry.error?.message ?? "failed"], ["hint", entry.error?.hint ?? ""]]));
+        continue;
+      }
+      const reading = entry.reading;
+      lines.push(
+        emitKV([
+          ["patent", reading.id],
+          ["title", reading.title ?? ""],
+          ["owner", reading.owner ?? ""],
+          ["status", reading.status ?? ""],
+          ["in_force", `${reading.term.inForce} (estimate)`],
+          ["expiry_estimate", reading.term.estimatedExpiry ?? ""],
+          ["maintenance", reading.term.maintenance.map((fee) => `${fee.year}y:${fee.state}`).join(" ")],
+          ["claims", `${reading.claimCount} total, ${reading.independentClaims.length} independent`],
+          ["why", reading.why ?? ""],
+        ]),
+      );
+      lines.push(
+        emitList(
+          "independent",
+          reading.independentClaims.map((claim) => ({ claim: claim.number, shared: claim.shared.join("; "), text: cell(claim.text, 400, full) })),
+          description ? ["claim", "shared", "text"] : ["claim", "text"],
+        ),
+      );
+    }
+    lines.push(emitBlock("next", ["ip-axi patents docs <application> for the file wrapper", "ip-axi prior-art search <description>"]));
+    lines.push(emitBlock("help", ["In-force and expiry are estimates from public data; terminal disclaimers and extensions are not visible."]));
+    print(lines.join("\n"));
+    return 0;
+  },
+};
+
 const patentsGet: CommandModule = {
   spec: {
     name: "patents get",
@@ -606,6 +764,8 @@ export const home: CommandModule = {
 };
 
 export const commands: Record<string, CommandModule> = {
+  "prior-art search": priorArtSearch,
+  "patents read": patentsRead,
   "patents search": patentsSearch,
   "patents get": patentsGet,
   "patents docs": patentsDocs,
@@ -624,9 +784,10 @@ export const aliases: Record<string, string> = {
   trademarks: "trademarks search",
   drawings: "drawings validate",
   index: "index status",
+  "prior-art": "prior-art search",
 };
 
-export const specs: CommandSpec[] = [status, patentsSearch, patentsGet, patentsDocs, patentsFamily, trademarksSearch, trademarksGet, trademarksDocs, drawingsValidate, indexBuild, indexStatus].map(
+export const specs: CommandSpec[] = [status, priorArtSearch, patentsSearch, patentsRead, patentsGet, patentsDocs, patentsFamily, trademarksSearch, trademarksGet, trademarksDocs, drawingsValidate, indexBuild, indexStatus].map(
   (command) => command.spec,
 );
 

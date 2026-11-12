@@ -18,6 +18,8 @@ import * as ops from "./providers/ops.js";
 import * as ppubs from "./providers/ppubs.js";
 import * as tmsearch from "./providers/tmsearch.js";
 import * as tsdr from "./providers/tsdr.js";
+import { generateQueries } from "./domain/relevance.js";
+import { mapLimit, priorArtSearch, readPatent } from "./research.js";
 import type { PatentHit, TrademarkHit } from "./types.js";
 
 type ToolResult = {
@@ -68,7 +70,7 @@ const sheetSchema = z.object({
 });
 
 const provenanceSchema = z.object({
-  provider: z.enum(["odp", "tsdr", "ops", "ppubs", "tmsearch", "index", "derived"]),
+  provider: z.enum(["odp", "tsdr", "ops", "ppubs", "tmsearch", "index", "openalex", "arxiv", "github", "derived"]),
   route: z.string(),
   retrievedAt: z.string(),
   sourceId: z.string().optional(),
@@ -92,6 +94,7 @@ const patentHitSchema = z.object({
   assignees: z.array(z.string()).optional(),
   cpc: z.array(z.string()).optional(),
   status: z.string().optional(),
+  patentNumber: z.string().optional(),
   applicationNumber: z.string().optional(),
   url: z.string().optional(),
   provenance: provenanceSchema,
@@ -165,6 +168,34 @@ async function autoPatentSearch(
     }
   }
   return { hits: [], notes, providers };
+}
+
+/**
+ * Patent hits for a concept screen: generated queries, light hydration, no
+ * expansion, so the screen stays quick. Falls back to the provider chain when
+ * ODP is not configured. Perf: P2 · about 20 cached requests · CRAP <= 10 (CC 3).
+ */
+async function conceptPatentSearch(concept: string): Promise<{ hits: PatentHit[]; notes: string[] }> {
+  if (!config.providers.odp.key) {
+    const fallback = await autoPatentSearch(generateQueries(concept).patentQueries[0] ?? concept.slice(0, 300), 10, "auto");
+    return { hits: fallback.hits, notes: fallback.notes };
+  }
+  const result = await priorArtSearch({ description: concept, sources: ["patents"], limit: 10, hydrate: 10, expand: false });
+  const hits: PatentHit[] = result.results.map((candidate) => ({
+    kind: "patent",
+    number: candidate.id,
+    displayNumber: candidate.id,
+    patentKind: candidate.id.startsWith("US-APP-") ? "application" : "grant",
+    title: candidate.title,
+    abstract: candidate.why,
+    grantDate: candidate.date,
+    assignees: candidate.owner ? [candidate.owner] : undefined,
+    status: candidate.status,
+    applicationNumber: candidate.applicationNumber,
+    url: candidate.url,
+    provenance: candidate.provenance,
+  }));
+  return { hits, notes: result.runs.filter((run) => run.error).map((run) => `${run.source} "${run.query}" failed: ${run.error}`) };
 }
 
 async function autoTrademarkSearch(
@@ -250,7 +281,8 @@ export function createServer(): McpServer {
         let trademarks: TrademarkHit[] = [...trademarkHits];
         const notes: string[] = [];
         if (searchLive) {
-          const patentResult = await autoPatentSearch(concept.slice(0, 300), 10, "auto");
+          // Several generated title queries over the whole description, not the first 300 characters as one query.
+          const patentResult = await conceptPatentSearch(concept);
           patents = [...patents, ...patentResult.hits];
           notes.push(...patentResult.notes);
           const markResult = await autoTrademarkSearch({
@@ -371,6 +403,51 @@ export function createServer(): McpServer {
         }
         const result = await autoPatentSearch(query, limit, effectiveProvider);
         return ok({ total: result.hits.length, hits: result.hits, providers: result.providers, notes: [...notes, ...result.notes] });
+      }),
+  );
+
+  server.registerTool(
+    "prior_art_search",
+    {
+      title: "Prior-art search across patents, papers, preprints, and code",
+      description:
+        "Give a plain-language description (or explicit boolean queries). Generates several queries, searches USPTO patents (titles, CPC classes, and citation links, then full text and claims), OpenAlex papers, arXiv preprints, and GitHub repositories, and returns one list ranked by relevance with why each hit overlaps. Queries support AND, OR, quoted phrases, and trailing * wildcards. A zero or low score is never evidence of novelty.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      inputSchema: {
+        description: z.string().min(20).optional().describe("Plain-language description of the invention or feature"),
+        queries: z.array(z.string().min(2)).max(20).optional().describe("Explicit boolean queries; replaces generated queries"),
+        sources: z.array(z.enum(["patents", "papers", "preprints", "code"])).optional().describe("Default: all four"),
+        limit: z.number().int().min(1).max(200).optional().describe("Rows returned (default 25)"),
+        hydrate: z.number().int().min(0).max(100).optional().describe("Patent candidates read in full (default 50)"),
+        expand: z.boolean().optional().describe("Expand by CPC class and citations (default true)"),
+      },
+    },
+    async ({ description, queries, sources, limit, hydrate, expand }) =>
+      guard(async () => ok(await priorArtSearch({ description, queries, sources, limit, hydrate, expand }))),
+  );
+
+  server.registerTool(
+    "patent_read",
+    {
+      title: "Read top patent hits: claims, status, term, owner, overlap",
+      description:
+        "For each US patent or application number: current owner, status, estimated expiry and maintenance-fee state, every independent claim in full, and, when a description is given, which of its key terms each independent claim shares and lacks. Term and in-force values are estimates for triage, not a legal status.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      inputSchema: {
+        numbers: z.array(z.string().min(5)).min(1).max(20).describe("US patent numbers (9765584) or application numbers (15/234,567)"),
+        description: z.string().optional().describe("The feature to compare each independent claim against"),
+      },
+    },
+    async ({ numbers, description }) =>
+      guard(async () => {
+        const readings = await mapLimit(numbers, 4, async (number) => {
+          try {
+            return { number, ok: true as const, reading: await readPatent(number, description) };
+          } catch (error) {
+            return { number, ok: false as const, error: toErrorPayload(error) };
+          }
+        });
+        return ok({ readings, disclaimer: "Term, status, and overlap are triage aids for a practitioner, not legal conclusions." });
       }),
   );
 
@@ -794,7 +871,7 @@ export function createServer(): McpServer {
     {
       title: "Screen public-disclosure bars and the grace clock",
       description:
-        "Compute the 35 U.S.C. 102(b)(1) one-year US grace deadline from a recorded disclosure and flag absolute-novelty jurisdictions where any public disclosure before filing destroys novelty. Date arithmetic only, not legal advice.",
+        "Compute the 35 U.S.C. 102(b)(1) one-year US grace deadline from a recorded disclosure, then apply a cited table of foreign grace provisions: no general grace (EP, GB, DE, FR), narrow exceptions only (CN, IN), and limited 12-month graces with conditions (JP, KR, CA, AU, BR). Date arithmetic only, not legal advice.",
       annotations: { readOnlyHint: true, openWorldHint: false },
       inputSchema: {
         disclosureDate: z.string().describe("ISO date of the earliest public disclosure"),

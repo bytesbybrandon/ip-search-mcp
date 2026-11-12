@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { assessConcept } from "../src/domain/assessment.js";
-import { assessDisclosure } from "../src/domain/disclosure.js";
+import { GRACE_RULES, assessDisclosure } from "../src/domain/disclosure.js";
 import { buildSearchBody } from "../src/providers/tmsearch.js";
 
 test("software concept flags 101 risks and proposes classifications", () => {
@@ -79,4 +79,41 @@ test("trademark search body zero-pads classes and filters live marks", () => {
   assert.ok(bool.filter.some((entry) => JSON.stringify(entry).includes("009")));
   assert.ok(bool.filter.some((entry) => JSON.stringify(entry).includes('"alive":true')));
   assert.equal(body.from, 0);
+});
+
+test("foreign grace table: every jurisdiction carries a citation and the right kind of grace", () => {
+  const expected: Record<string, { kind: string; months: number }> = {
+    EP: { kind: "none", months: 0 },
+    GB: { kind: "none", months: 0 },
+    DE: { kind: "none", months: 0 },
+    FR: { kind: "none", months: 0 },
+    CN: { kind: "narrow", months: 6 },
+    IN: { kind: "narrow", months: 12 },
+    JP: { kind: "conditional", months: 12 },
+    KR: { kind: "conditional", months: 12 },
+    CA: { kind: "conditional", months: 12 },
+    AU: { kind: "conditional", months: 12 },
+    BR: { kind: "general", months: 12 },
+  };
+  assert.deepEqual(GRACE_RULES.map((rule) => rule.code).sort(), Object.keys(expected).sort());
+  for (const rule of GRACE_RULES) {
+    assert.equal(rule.kind, expected[rule.code]?.kind, rule.code);
+    assert.equal(rule.graceMonths, expected[rule.code]?.months, rule.code);
+    assert.ok(rule.citation.length > 5 && rule.conditions.length > 20, `${rule.code} needs a citation and conditions`);
+  }
+});
+
+test("disclosure screen: limited 12-month graces stay open and close on time; no-grace offices stay barred", () => {
+  const open = assessDisclosure({ disclosureDate: "2026-06-01", byInventor: true, plannedFilingDate: "2026-12-01" });
+  const status = (code: string) => open.jurisdictions.find((entry) => entry.code === code);
+  for (const code of ["JP", "KR", "CA", "AU", "BR"]) {
+    assert.equal(status(code)?.status, "open", code);
+    assert.equal(status(code)?.deadline, "2027-06-01", code);
+  }
+  for (const code of ["EP", "GB", "DE", "FR", "CN", "IN"]) assert.equal(status(code)?.status, "no-grace", code);
+  assert.match(status("JP")?.citation ?? "", /Art\. 30/);
+  assert.ok(open.actions.some((action) => /JP and KR: claim the exception/.test(action)));
+
+  const late = assessDisclosure({ disclosureDate: "2025-01-15", byInventor: true, plannedFilingDate: "2026-06-01", jurisdictions: ["JP", "AU"] });
+  assert.deepEqual(late.jurisdictions.filter((entry) => entry.code !== "US").map((entry) => entry.status), ["closed", "closed"]);
 });
