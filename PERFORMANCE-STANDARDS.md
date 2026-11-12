@@ -13,7 +13,7 @@ Most time in this server is spent waiting on public APIs with published rate lim
 | **P2 - Background** | < 10 s cached, about 2 min cold | Many paced provider calls | `prior_art_search`, `prior_art_report`, `concept_assessment` |
 | **P3 - Batch** | minutes | Offline | `index_build` over bulk XML |
 
-Cold P2 time is set by the provider rate limits in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), not by this server's own work. A default prior-art search makes about 75 to 120 ODP requests (21 title queries of one to three pages, up to 3 class queries, at most `hydrate` full texts across all waves, up to 5 citation lookups), which is why a cold run takes about two minutes; see [docs/TOOLS.md](docs/TOOLS.md). Lower it by caching and by reading fewer documents (`hydrate`), not by raising a limit.
+Cold P2 time is set by the provider rate limits in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), not by this server's own work. The request budget of a default prior-art search is in [docs/TOOLS.md](docs/TOOLS.md). Lower it by caching and by reading fewer documents (`hydrate`), not by raising a limit.
 
 ## Complexity budget
 

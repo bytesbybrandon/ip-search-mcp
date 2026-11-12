@@ -61,7 +61,7 @@ export function estimateTerm(facts: TermFacts): TermEstimate {
   const events = facts.events ?? [];
   const basis: string[] = [];
   const caveats = [
-    "Estimate only. Terminal disclaimers, patent term extension (35 U.S.C. 156), and reinstatement after late payment are not visible in this data.",
+    "Estimate only. Terminal disclaimers, patent term extension (35 U.S.C. 156), and reinstatements other than an accepted late-payment petition are not visible in this data.",
   ];
   const maintenance: TermEstimate["maintenance"] = [];
 

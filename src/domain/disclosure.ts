@@ -135,10 +135,6 @@ function daysBetween(from: Date, to: Date): number {
 }
 
 /**
- * Screen the 35 U.S.C. 102(b)(1) one-year grace period and the absolute-novelty
- * jurisdictions that do not offer one. Dates are computed, not legal advice.
- */
-/**
  * One foreign jurisdiction's bar for a given disclosure.
  * Perf: P1 · O(rules) · CRAP <= 15 (CC 7).
  */
@@ -181,6 +177,10 @@ function foreignBar(code: string, disclosure: Date, reference: Date, today: Date
   };
 }
 
+/**
+ * Screen the 35 U.S.C. 102(b)(1) one-year grace period, then apply the cited
+ * foreign table (`GRACE_RULES`). Dates are computed, not legal advice.
+ */
 export function assessDisclosure(facts: DisclosureFacts): DisclosureAssessment {
   const disclosure = parseDate(facts.disclosureDate);
   const planned = parseDate(facts.plannedFilingDate);
