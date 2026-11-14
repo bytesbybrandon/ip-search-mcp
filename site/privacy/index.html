@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy | ip-search-mcp</title>
+<meta name="description" content="How the ip-search-mcp site counts page views.">
+<meta property="og:title" content="Privacy | ip-search-mcp">
+<meta property="og:description" content="How the ip-search-mcp site counts page views.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://bytesbybrandon.github.io/ip-search-mcp/privacy/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a1d24'/%3E%3Crect x='6.5' y='5.5' width='19' height='21' fill='none' stroke='%23f4f1ea' stroke-width='1.4'/%3E%3Cline x1='10' y1='21' x2='22' y2='21' stroke='%23d4553a' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="canonical" href="https://bytesbybrandon.github.io/ip-search-mcp/privacy/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500&family=Atkinson+Hyperlegible+Mono:wght@400;500&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<script defer src="https://umami-production-abb4.up.railway.app/script.js" data-website-id="d5932082-8acf-4e4b-82da-66309d74fe94" data-domains="bytesbybrandon.github.io" data-do-not-track="true"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="container nav__inner">
+    <a class="wordmark" href="../">ip-search-mcp</a>
+    <nav aria-label="Primary">
+      <a href="../">Home</a>
+      <a href="https://github.com/bytesbybrandon/ip-search-mcp">Source</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="privacy">
+  <div class="container privacy__grid">
+    <h1>Privacy</h1>
+    <section class="privacy__body" aria-labelledby="site-analytics">
+      <h2 id="site-analytics">Site analytics</h2>
+      <p>ip-search-mcp counts page views with Umami, open-source analytics software that this site runs itself, hosted on Railway. The tracker script loads directly from <a href="https://umami-production-abb4.up.railway.app/script.js">umami-production-abb4.up.railway.app</a>, and the data is stored in a database this site controls, not sent to an analytics vendor. It is not used for advertising and is not sold.</p>
+      <p>Each page view records the page address (including any query string), the referrer, the page title, your browser and operating system, device type, screen size, language, and an approximate location (country, region and city) looked up from your IP address.</p>
+      <ul>
+        <li>Umami's documentation says your IP address is used for that lookup and is never stored by Umami; the hosting provider may still log it in routine request logs.</li>
+        <li>The tracker sets no cookies and writes nothing to your browser storage, and Umami's documentation says visitors are not tracked across websites.</li>
+        <li>Repeat visits are counted using a hash of values such as your IP address and browser user agent combined with a salt that rotates monthly by default, rather than a cookie or identifier stored on your device.</li>
+        <li>If your browser sends a Do Not Track signal, the tracker sends no page-view data, though your browser still requests the script.</li>
+        <li>Only pages on bytesbybrandon.github.io are counted, so previews and local copies are not. This site does not use a session recorder.</li>
+        <li>Self-hosted Umami keeps data until it is deleted and has no automatic expiry.</li>
+      </ul>
+    </section>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <nav class="footer__links" aria-label="Footer">
+      <a href="../">Home</a>
+      <a href="https://github.com/bytesbybrandon/ip-search-mcp">GitHub</a>
+      <a href="https://www.npmjs.com/package/ip-search-mcp">npm</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

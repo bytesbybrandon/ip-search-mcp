@@ -120,7 +120,7 @@ One file can hold thousands of records: `<case-file>` blocks are split and parse
 
 ## Project site
 
-`site/` holds a static project page with no build step: tokens, base rules, one stylesheet, and one HTML file. `.github/workflows/pages.yml` deploys that directory to GitHub Pages on every push to main that touches it. The page is presentation only; it is not an input to the server or the package.
+`site/` holds a static project page with no build step: tokens, base rules, one stylesheet, the landing page, and a privacy page. `.github/workflows/pages.yml` deploys that directory to GitHub Pages on every push to main that touches it. The pages are presentation only; they are not an input to the server or the package.
 
 ## Failure behavior
 

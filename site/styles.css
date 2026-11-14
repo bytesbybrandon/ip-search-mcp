@@ -290,8 +290,20 @@ h1, h2 { max-width: none; }
 .install__out > .actions { margin-top: var(--space-md); }
 #agent-prompt { white-space: pre-wrap; overflow-wrap: anywhere; }
 
+/* The privacy page: text only, set at reading measure */
+.privacy { padding-block: var(--section-gap-s); }
+.privacy__grid { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: var(--space-2xl); align-items: start; }
+.privacy h1 { font-size: var(--text-section); max-width: 30ch; }
+.privacy__body { display: grid; gap: var(--space-md); }
+.privacy__body h2 { font-size: var(--text-2xl); }
+.privacy__body p, .privacy__body li { color: var(--color-ink-2); }
+.privacy__body p { max-width: 68ch; }
+.privacy__body ul { display: grid; gap: var(--space-xs); max-width: 68ch; margin: 0; padding-left: 1.1em; }
+.privacy__body a { overflow-wrap: anywhere; }
+
 /* The footer is the sheet's title block: ruled cells, each a fact the page already states. */
 .footer { border-top: var(--rule-hair) solid var(--color-rule); padding-block: var(--space-xl); }
+.footer__links { display: flex; flex-wrap: wrap; gap: var(--space-lg); }
 .tblock { display: grid; grid-template-columns: minmax(0, 4fr) repeat(3, minmax(0, 2fr)); border: var(--rule-hair) solid var(--color-rule-2); }
 .tblock > * { margin: 0; padding: var(--space-md) var(--space-lg); border-left: var(--rule-hair) solid var(--color-rule-2); }
 .tblock__mark { grid-column: 1; grid-row: 1 / span 2; display: flex; align-items: flex-end; border-left: 0; font-size: var(--text-lg); }
@@ -319,6 +331,7 @@ h1, h2 { max-width: none; }
 @media (max-width: 60rem) {
   .hero { min-height: 0; padding-block: var(--space-xl) var(--space-2xl); }
   .hero__grid, .clock__grid, .stats, .close__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-xl); }
+  .privacy__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-xl); }
   .hero__text h1 { max-width: 12ch; }
   .pass { height: auto; }
   .pass__stage { position: static; height: auto; padding-block: var(--section-gap-s); }
